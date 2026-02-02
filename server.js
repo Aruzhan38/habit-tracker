@@ -22,10 +22,10 @@ app.use('/api/users', userRoutes);
 const habitRoutes = require('./src/routes/habitRoutes');
 app.use('/api', habitRoutes);
 
-const reminderRoutes = require("./src/routes/reminder.routes");
+const reminderRoutes = require("./src/routes/reminderRoutes");
 app.use("/api", reminderRoutes);
 
-const statsRoutes = require("./src/routes/stats.routes");
+const statsRoutes = require("./src/routes/statsRoutes");
 app.use("/api", statsRoutes);
 
 
