@@ -22,6 +22,12 @@ app.use('/api/users', userRoutes);
 const habitRoutes = require('./src/routes/habitRoutes');
 app.use('/api', habitRoutes);
 
+const reminderRoutes = require("./src/routes/reminder.routes");
+app.use("/api", reminderRoutes);
+
+const statsRoutes = require("./src/routes/stats.routes");
+app.use("/api", statsRoutes);
+
 app.get(`/`, (req, res) => 
     res.sendFile(path.join(__dirname + '/views/index.html')));
 
