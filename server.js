@@ -28,16 +28,22 @@ app.use("/api", reminderRoutes);
 const statsRoutes = require("./src/routes/stats.routes");
 app.use("/api", statsRoutes);
 
-app.get(`/`, (req, res) => 
-    res.sendFile(path.join(__dirname + '/views/index.html')));
+
+app.use((err, req, res, next) => {
+  console.error(err); 
+  const status = err.status || 500;
+  res.status(status).json({
+    message: err.message || "Internal server error",
+  });
+});
 
 mongoose.connect(mongoURI, { dbName: "habit-tracker" })
   .then(() => {
-    console.log(`Connected to MongoDB: habit-tracker`);
+    console.log("Connected to MongoDB: habit-tracker");
     app.listen(port, () => {
-      console.log(`Server is running on http://localhost:${port}`)
-    })
+      console.log(`Server is running on http://localhost:${port}`);
+    });
   })
   .catch((err) => {
-    console.error(`Failed to connect to MongoDB`, err);
+    console.error("Failed to connect to MongoDB", err);
   });
