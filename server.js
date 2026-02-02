@@ -12,24 +12,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '/public')));
 app.use(express.static(path.join(__dirname, 'views')));
-// тут будем писать routes
-const authRoutes = require('./src/routes/userRoutes');
-const productRoutes = require('./src/routes/productRoutes');
-const orderRoutes = require('./src/routes/orderRoutes');
-const adminRoutes = require('./src/routes/adminRoutes');
-const categoryRoutes = require('./src/routes/categoryRoutes');
-const cartRoutes = require('./src/routes/cartRoutes');
 
-app.use('/api/cart', cartRoutes);
-app.use('/api/categories', categoryRoutes);
+const authRoutes = require(`./src/routes/authRoutes`);
+
+app.use(`/api/auth`, authRoutes);
+
+
 
 app.get(`/`, (req, res) => 
     res.sendFile(path.join(__dirname + '/views/index.html')));
-
-app.use(`/api/auth`, authRoutes);
-app.use(`/api/products`, productRoutes);
-app.use(`/api/orders`, orderRoutes);
-app.use(`/api/admin`, adminRoutes);
 
 mongoose.connect(mongoURI, { dbName: "habit-tracker" })
   .then(() => {
