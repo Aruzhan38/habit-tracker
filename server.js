@@ -19,6 +19,9 @@ app.use(`/api/auth`, authRoutes);
 const userRoutes = require('./src/routes/userRoutes');
 app.use('/api/users', userRoutes);
 
+const habitRoutes = require('./src/routes/habitRoutes');
+app.use('/api', habitRoutes);
+
 app.get(`/`, (req, res) => 
     res.sendFile(path.join(__dirname + '/views/index.html')));
 
