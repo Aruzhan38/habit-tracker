@@ -1,10 +1,43 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
+
+const reminderSchema = new mongoose.Schema(
+  {
+    time: { type: String, required: true },
+    daysOfWeek: {
+      type: [Number],
+      default: [],
+      validate: {
+        validator: (arr) =>
+          arr.every((d) => Number.isInteger(d) && d >= 0 && d <= 6),
+        message: "daysOfWeek must be integers 0..6",
+      },
+    },
+    enabled: { type: Boolean, default: true },
+    note: { type: String, default: "" },
+  },
+  { timestamps: true }
+);
+
+const completionSchema = new mongoose.Schema(
+  {
+    date: {
+      type: Date,
+      required: true, 
+    },
+    completed: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { timestamps: true }
+);
+
 
 const habitSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
     },
 
@@ -13,14 +46,14 @@ const habitSchema = new mongoose.Schema(
 
     frequency: {
       type: String,
-      enum: ['daily', 'weekly'],
-      default: 'daily',
+      enum: ["daily", "weekly"],
+      default: "daily",
     },
 
     goal: {
       type: {
         type: String,
-        enum: ['count', 'boolean'],
+        enum: ["count", "boolean"],
         required: true,
       },
       target: { type: Number },
@@ -36,11 +69,23 @@ const habitSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['active', 'archived'],
-      default: 'active',
+      enum: ["active", "archived"],
+      default: "active",
+    },
+
+    /* ---------- YOUR PART ---------- */
+
+    reminders: {
+      type: [reminderSchema],
+      default: [],
+    },
+
+    completions: {
+      type: [completionSchema],
+      default: [],
     },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Habit', habitSchema);
+module.exports = mongoose.model("Habit", habitSchema);
