@@ -24,6 +24,8 @@ const completionSchema = new mongoose.Schema(
       type: Date,
       required: true, 
     },
+    value: { type: Number },
+    note: { type: String, default: "" },
     completed: {
       type: Boolean,
       default: true,
@@ -84,6 +86,13 @@ const habitSchema = new mongoose.Schema(
       type: [completionSchema],
       default: [],
     },
+
+    tags: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Tag",
+      }
+    ],
   },
   { timestamps: true }
 );

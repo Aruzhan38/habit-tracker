@@ -11,5 +11,12 @@ router.patch('/habits/:habitId', protect, habitController.updateHabit);
 router.delete('/habits/:habitId', protect, habitController.deleteHabit);
 router.post('/habits/:habitId/archive', protect, habitController.archiveHabit);
 router.post('/habits/:habitId/unarchive', protect, habitController.unarchiveHabit);
+//check-ins 
+
+router.post("/habits/:habitId/checkins", protect, habitController.addCheckIn);
+router.get("/habits/:habitId/checkins", protect, habitController.getCheckIns);
+router.delete("/habits/:habitId/checkins/:checkInId", protect, habitController.deleteCheckIn);
+router.put("/habits/:habitId/checkins/:date", protect, habitController.upsertCheckInByDate);
+router.delete("/habits/:habitId/checkins/:date", protect, habitController.deleteCheckInByDate);
 
 module.exports = router;
