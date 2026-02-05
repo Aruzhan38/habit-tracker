@@ -52,7 +52,7 @@ require(`dotenv`).config();
 const express = require(`express`);
 const mongoose = require(`mongoose`);
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 3001;
 const mongoURI = process.env.MONGO_URI;
 const path = require(`path`);
 const cors = require(`cors`);
