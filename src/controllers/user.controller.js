@@ -41,3 +41,17 @@ exports.updateMe = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+exports.uploadAvatar = async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+  const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    { avatarUrl },
+    { new: true }
+  ).select('-password');
+
+  res.json({ message: 'Avatar updated', user });
+};

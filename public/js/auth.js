@@ -1,61 +1,69 @@
+const authError = document.getElementById('authError');
+
+function showAuthError(msg) {
+  if (!authError) return;
+  authError.textContent = msg;
+  authError.classList.remove('d-none');
+}
+
 document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
+  e.preventDefault();
+  if (authError) authError.classList.add('d-none');
 
-    try {
-        const res = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
 
-        if (res.ok) {
-            const data = await res.json();
-            
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
 
-            if (data.user.role === 'admin') {
-                window.location.href = '/admin.html';
-            } else {
-                window.location.href = '/index.html';
-            }
-        } else {
-            const data = await res.json();
-            alert(data.message || 'Login failed');
-        }
-    } catch (err) {
-        console.error('Auth error:', err);
-        alert('Server connection error');
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      showAuthError(data.message || data.error || 'Login failed');
+      return;
     }
+
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user || {}));
+    
+    window.location.href = '/dashboard.html';
+  } catch (err) {
+    console.error(err);
+    showAuthError('Server connection error');
+  }
 });
 
-
 document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('regName').value;
-    const email = document.getElementById('regEmail').value;
-    const password = document.getElementById('regPassword').value;
+  e.preventDefault();
+  if (authError) authError.classList.add('d-none');
 
-    try {
-        const res = await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password })
-        });
+  const username = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
 
-        const data = await res.json(); 
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password }),
+    });
 
-        if (res.ok) {
-            const firstTabEl = document.querySelector('#tab-login');
-            const firstTab = new bootstrap.Tab(firstTabEl);
-            firstTab.show();
-        } else {
-            alert(data.message || 'Registration failed');
-        }
-    } catch (err) {
-        console.error('Reg error:', err);
-        alert('Server connection error');
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      showAuthError(data.message || data.error || 'Registration failed');
+      return;
     }
+
+    const loginTabBtn = document.querySelector('#tab-login');
+    const tab = new bootstrap.Tab(loginTabBtn);
+    tab.show();
+  } catch (err) {
+    console.error(err);
+    showAuthError('Server connection error');
+  }
 });

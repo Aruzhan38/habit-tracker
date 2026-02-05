@@ -12,7 +12,7 @@ exports.createHabit = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
-// GET /habits
+
 exports.getHabits = async (req, res) => {
   try {
     const filter = { user: req.user.id };
@@ -28,7 +28,6 @@ exports.getHabits = async (req, res) => {
   }
 };
 
-// GET /habits/:habitId
 exports.getHabitById = async (req, res) => {
   try {
     const habit = await Habit.findOne({
@@ -46,7 +45,6 @@ exports.getHabitById = async (req, res) => {
   }
 };
 
-// PATCH /habits/:habitId
 exports.updateHabit = async (req, res) => {
   try {
     const habit = await Habit.findOneAndUpdate(
@@ -65,7 +63,6 @@ exports.updateHabit = async (req, res) => {
   }
 };
 
-// DELETE /habits/:habitId
 exports.deleteHabit = async (req, res) => {
   try {
     const habit = await Habit.findOneAndDelete({
@@ -83,7 +80,6 @@ exports.deleteHabit = async (req, res) => {
   }
 };
 
-// POST /habits/:habitId/archive
 exports.archiveHabit = async (req, res) => {
   const habit = await Habit.findOneAndUpdate(
     { _id: req.params.habitId, user: req.user.id },
@@ -94,7 +90,6 @@ exports.archiveHabit = async (req, res) => {
   res.json({ habit });
 };
 
-// POST /habits/:habitId/unarchive
 exports.unarchiveHabit = async (req, res) => {
   const habit = await Habit.findOneAndUpdate(
     { _id: req.params.habitId, user: req.user.id },

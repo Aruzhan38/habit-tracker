@@ -1,0 +1,59 @@
+:root {
+  --bg-soft: #f8f9fa;
+  --pastel-blue: #e3f2fd;
+  --text-dark: #2d3748;
+  --accent: #6c63ff;
+}
+
+body {
+  margin: 0;
+  font-family: "Nunito", sans-serif;
+  color: var(--text-dark);
+  background: linear-gradient(135deg, var(--pastel-blue) 0%, #ffffff 100%);
+}
+
+.intro-section {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.hero-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  margin-bottom: 1.2rem;
+  color: var(--accent);
+  line-height: 1.1;
+}
+
+.hero-subtitle {
+  font-size: 1.2rem;
+  color: #718096;
+  margin-bottom: 2rem;
+  max-width: 650px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.btn-get-started {
+  padding: 14px 38px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border-radius: 999px;
+  background-color: var(--accent);
+  border: none;
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(108, 99, 255, 0.2);
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-get-started:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 26px rgba(108, 99, 255, 0.28);
+  color: #fff;
+}

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Habit Tracker | Dashboard</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css" />
+</head>
+
+<body>
+
+  <div class="dashboard-container">
+    <nav class="container d-flex justify-content-between align-items-center mb-5">
+      <h3 class="fw-bold">Habit Tracker</h3>
+      <button class="btn btn-link text-danger text-decoration-none" id="logoutBtn">Logout</button>
+    </nav>
+
+    <div class="container">
+      <div class="row">
+        <!-- Profile -->
+        <div class="col-md-4">
+          <div class="profile-card text-center">
+            <div class="avatar-wrap mb-3">
+              <div id="avatar-fallback" class="avatar-fallback">U</div>
+              <img id="avatar-img" class="avatar-img d-none" alt="avatar" />
+            </div>
+
+            <h4 id="user-name" class="fw-bold">Loading...</h4>
+            <p id="user-email" class="text-muted small mb-1"></p>
+            <p class="text-muted small mb-2" id="user-timezone"></p>
+
+            <hr>
+
+            <div class="text-start">
+              <p class="mb-1 small"><strong>Status:</strong> <span id="user-status">Beginner</span></p>
+              <p class="mb-0 small"><strong>Habits:</strong> <span id="habits-count">0</span></p>
+            </div>
+
+            <button class="btn btn-sm btn-outline-primary rounded-pill mt-3"
+                    data-bs-toggle="modal"
+                    data-bs-target="#editProfileModal">
+              Edit profile
+            </button>
+          </div>
+        </div>
+
+        <!-- Habits -->
+        <div class="col-md-8">
+
+          <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+              <h4 class="fw-bold mb-0">My Habits</h4>
+
+              <div class="habit-filter">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="filterActiveBtn">
+                  Active
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="filterArchivedBtn">
+                  Archived
+                </button>
+              </div>
+            </div>
+
+            <button class="btn btn-sm btn-primary rounded-pill px-3"
+                    data-bs-toggle="modal"
+                    data-bs-target="#addHabitModal"
+                    id="addHabitBtn">
+              + Add New
+            </button>
+          </div>
+
+          <div id="habits-container">
+            <p class="text-center text-muted mt-4">Loading...</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="editProfileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content rounded-4">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Edit Profile</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input class="form-control" id="edit-username" placeholder="Username" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input class="form-control" id="edit-email" placeholder="Email" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Timezone</label>
+            <input class="form-control" id="edit-timezone" placeholder="Asia/Almaty" />
+            <div class="form-text">Example: Asia/Almaty, UTC, Europe/London</div>
+          </div>
+
+          <hr>
+
+          <div class="mb-2">
+            <label class="form-label">Profile photo</label>
+            <input type="file" class="form-control" id="avatarFile" accept="image/*" />
+            <div class="form-text">PNG/JPG/WEBP, max 2MB</div>
+          </div>
+
+          <div class="alert alert-danger d-none mt-3" id="profile-error"></div>
+          <div class="alert alert-success d-none mt-3" id="profile-success">Saved!</div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary rounded-pill" id="saveProfileBtn">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="addHabitModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content rounded-4">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Create Habit</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <form id="createHabitForm">
+          <div class="modal-body">
+
+            <div class="mb-3">
+              <label class="form-label">Name</label>
+              <input class="form-control" id="habit-name" placeholder="Drink water" required />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <input class="form-control" id="habit-desc" placeholder="2 liters" />
+            </div>
+
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Frequency</label>
+                <select class="form-select" id="habit-frequency">
+                  <option value="daily" selected>daily</option>
+                  <option value="weekly">weekly</option>
+                  <option value="custom">custom</option>
+                </select>
+              </div>
+
+              <div class="col-6">
+                <label class="form-label">Color</label>
+                <input class="form-control form-control-color w-100" id="habit-color" value="#6c63ff" type="color" />
+              </div>
+            </div>
+
+            <div class="row g-2 mt-2">
+              <div class="col-6">
+                <label class="form-label">Goal target</label>
+                <input class="form-control" id="habit-target" type="number" value="1" min="1" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">Goal unit</label>
+                <input class="form-control" id="habit-unit" placeholder="cups" />
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <label class="form-label">Start date</label>
+              <input class="form-control" id="habit-startDate" type="date" />
+            </div>
+
+            <div class="alert alert-danger d-none mt-3" id="habit-error"></div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary rounded-pill">Create</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

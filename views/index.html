@@ -1,170 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Habit Tracker | Your Path to Success</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-soft: #f8f9fa;
-            --pastel-blue: #e3f2fd;
-            --pastel-green: #e8f5e9;
-            --pastel-purple: #f3e5f5;
-            --text-dark: #2d3748;
-            --accent: #6c63ff;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Habit Tracker | Your Path to Success</title>
 
-        body {
-            background-color: var(--bg-soft);
-            font-family: 'Nunito', sans-serif;
-            color: var(--text-dark);
-            margin: 0;
-        }
-
-        .intro-section {
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            background: linear-gradient(135deg, var(--pastel-blue) 0%, #ffffff 100%);
-        }
-
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 800;
-            margin-bottom: 1.5rem;
-            color: var(--accent);
-        }
-
-        .hero-subtitle {
-            font-size: 1.25rem;
-            color: #718096;
-            margin-bottom: 2rem;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .btn-get-started {
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            font-weight: 700;
-            border-radius: 50px;
-            background-color: var(--accent);
-            border: none;
-            color: white;
-            box-shadow: 0 10px 20px rgba(108, 99, 255, 0.2);
-            transition: all 0.3s;
-            text-decoration: none;
-        }
-
-        .btn-get-started:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(108, 99, 255, 0.3);
-            color: white;
-        }
-
-        .hidden { display: none !important; }
-
-        .dashboard-container {
-            padding: 40px 20px;
-        }
-
-        .profile-card {
-            background: white;
-            border-radius: 20px;
-            padding: 25px;
-            border: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-        }
-
-        .habit-card {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-left: 5px solid var(--accent);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-        }
-    </style>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
-
-    <div id="intro-page" class="intro-section">
-        <div class="container">
-            <h1 class="hero-title">Small steps <br> to big goals</h1>
-            <p class="hero-subtitle">Start tracking your habits today. Create the best version of yourself in a cozy and peaceful atmosphere.</p>
-            <a href="/auth.html" class="btn btn-get-started">Get Started →</a>
-        </div>
+  <div class="intro-section">
+    <div class="container text-center">
+      <h1 class="hero-title">Small steps to <br> big goals</h1>
+      <p class="hero-subtitle">
+        Start tracking your habits today. Create the best version of yourself in a cozy and peaceful atmosphere.
+      </p>
+      <a href="/auth.html" class="btn btn-get-started">Get Started →</a>
     </div>
-
-    <div id="main-dashboard" class="dashboard-container hidden">
-        <nav class="container d-flex justify-content-between align-items-center mb-5">
-            <h3 class="fw-bold">Habit Tracker </h3>
-            <button class="btn btn-link text-danger text-decoration-none" id="logoutBtn">Logout</button>
-        </nav>
-
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="profile-card text-center">
-                        <div class="mb-3" style="font-size: 50px;">👤</div>
-                        <h4 id="user-name" class="fw-bold">Loading...</h4>
-                        <p id="user-email" class="text-muted small"></p>
-                        <hr>
-                        <div class="text-start">
-                            <p class="mb-1 small"><strong>Status:</strong> Beginner</p>
-                            <p class="mb-0 small"><strong>Habits:</strong> 0</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-8">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h4 class="fw-bold">My Habits</h4>
-                        <button class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addHabitModal">+ Add New</button>
-                    </div>
-                    
-                    <div id="habits-container">
-                        <p class="text-center text-muted mt-4">Your habits will appear here...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const token = localStorage.getItem('token');
-            const userJson = localStorage.getItem('user');
-            
-            const introPage = document.getElementById('intro-page');
-            const dashboard = document.getElementById('main-dashboard');
-
-            if (token && userJson) {
-                const user = JSON.parse(userJson);
-                
-                introPage.classList.add('hidden');
-                dashboard.classList.remove('hidden');
-
-                document.getElementById('user-name').textContent = user.username;
-                document.getElementById('user-email').textContent = user.email;
-                
-            }
-
-            document.getElementById('logoutBtn').addEventListener('click', () => {
-                localStorage.clear();
-                window.location.reload();
-            });
-        });
-    </script>
+  </div>
 </body>
 </html>
