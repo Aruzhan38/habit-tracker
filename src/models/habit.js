@@ -75,7 +75,6 @@ const habitSchema = new mongoose.Schema(
       default: "active",
     },
 
-    /* ---------- YOUR PART ---------- */
 
     reminders: {
       type: [reminderSchema],
