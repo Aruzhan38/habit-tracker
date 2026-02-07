@@ -14,6 +14,7 @@ const reminderSchema = new mongoose.Schema(
     },
     enabled: { type: Boolean, default: true },
     note: { type: String, default: "" },
+    lastSentAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

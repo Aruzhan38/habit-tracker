@@ -262,8 +262,8 @@ async function createHabit() {
 
   const name = document.getElementById("habit-name").value.trim();
   const frequency = document.getElementById("habit-frequency").value;
-  
-  const selectedDays = Array.from(document.querySelectorAll('.day-checkbox:checked'))
+
+  const selectedDays = Array.from(document.querySelectorAll(".day-checkbox:checked"))
     .map(cb => parseInt(cb.value, 10));
 
   if (!name) {
@@ -290,22 +290,43 @@ async function createHabit() {
   };
 
   try {
-    await apiRequest("/api/habits", {
-      method: "POST",
-      body: payload,
-    });
+    const createdHabitResp = await apiRequest("/api/habits", {
+    method: "POST",
+    body: payload,
+  });
+
+  const createdHabit = createdHabitResp.habit || createdHabitResp;
+  console.log("HABIT CREATED:", createdHabit);
+
+  const reminder = collectReminderData();
+  console.log("REMINDER PAYLOAD:", reminder);
+
+  if (reminder) {
+    try {
+      const r = await apiRequest(`/api/reminders/habits/${createdHabit._id}/reminders`, {
+  method: "POST",
+  body: reminder,
+});
+      console.log("REMINDER CREATED:", r);
+      resetReminderForm();
+    } catch (e) {
+      console.error("REMINDER CREATE ERROR:", e);
+      alert("Habit created, but reminder was not saved");
+    }
+  }
 
     const modalEl = document.getElementById("addHabitModal");
     const modalInstance = bootstrap.Modal.getInstance(modalEl);
     modalInstance?.hide();
-    
+
     document.getElementById("createHabitForm").reset();
-    document.getElementById('custom-days-container').classList.add('d-none');
+    document.getElementById("custom-days-container").classList.add("d-none");
+    resetReminderForm();
 
     CURRENT_VIEW = "list";
     CURRENT_FILTER = "active";
     await refreshHabits();
-    
+
   } catch (e) {
     errEl.textContent = e.message;
     errEl.classList.remove("d-none");
@@ -397,4 +418,26 @@ async function uploadAvatar(file) {
   if (!res.ok) throw new Error("Upload failed");
   const data = await res.json();
   return data.user;
+}
+
+function collectReminderData() {
+  const time = document.getElementById("reminder-time")?.value;
+  if (!time) return null; 
+
+  const days = Array.from(document.querySelectorAll(".reminder-day:checked"))
+    .map(cb => Number(cb.value));
+
+  return {
+    time,
+    daysOfWeek: days,
+    enabled: document.getElementById("reminder-enabled").checked,
+    note: document.getElementById("reminder-note").value || ""
+  };
+}
+
+function resetReminderForm() {
+  document.getElementById("reminder-time").value = "";
+  document.getElementById("reminder-note").value = "";
+  document.getElementById("reminder-enabled").checked = true;
+  document.querySelectorAll(".reminder-day").forEach(cb => cb.checked = false);
 }

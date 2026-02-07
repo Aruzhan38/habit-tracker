@@ -1,9 +1,12 @@
-const router = require("express").Router();
+const express = require("express");
+const router = express.Router();
 const { protect } = require("../middleware/auth.middleware");
-const stats = require("../controllers/stats.controller");
-const { validateStatsRange } = require("../validators/stats.validator");
+const statsController = require("../controllers/stats.controller");
 
-router.get("/habits/:habitId/stats", protect, validateStatsRange, stats.getHabitStats);
-router.get("/stats/overview", protect, validateStatsRange, stats.getOverview);
+router.get("/habit/:habitId/overview", protect, statsController.overview);
+router.get("/habit/:habitId/calendar", protect, statsController.calendar);
+router.get("/habit/:habitId/history", protect, statsController.history);
+router.get("/habit/:habitId/streaks", protect, statsController.streaks);
+router.get("/habit/:habitId/trend", protect, statsController.trend);
 
 module.exports = router;

@@ -199,6 +199,41 @@
               <input class="form-control" id="habit-startDate" type="date" />
             </div>
 
+            <hr class="my-3">
+            <h6 class="fw-bold mb-2">Reminder (optional)</h6>
+
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Time</label>
+                <input type="time" class="form-control" id="reminder-time">
+              </div>
+
+              <div class="col-6 d-flex align-items-end">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="reminder-enabled" checked>
+                  <label class="form-check-label">Enabled</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-2">
+              <label class="form-label small text-muted">Days of week (optional)</label>
+              <div class="d-flex justify-content-between bg-light p-2 rounded">
+                <label class="text-center"><input type="checkbox" class="reminder-day" value="1"> <br>Mo</label>
+                <label class="text-center"><input type="checkbox" class="reminder-day" value="2"> <br>Tu</label>
+                <label class="text-center"><input type="checkbox" class="reminder-day" value="3"> <br>We</label>
+                <label class="text-center"><input type="checkbox" class="reminder-day" value="4"> <br>Th</label>
+                <label class="text-center"><input type="checkbox" class="reminder-day" value="5"> <br>Fr</label>
+                <label class="text-center"><input type="checkbox" class="reminder-day" value="6"> <br>Sa</label>
+                <label class="text-center"><input type="checkbox" class="reminder-day" value="0"> <br>Su</label>
+              </div>
+            </div>
+
+            <div class="mt-2">
+              <label class="form-label">Note</label>
+              <input class="form-control" id="reminder-note" placeholder="Drink a glass of water">
+            </div>
+
             <div class="alert alert-danger d-none mt-3" id="habit-error"></div>
           </div>
 
