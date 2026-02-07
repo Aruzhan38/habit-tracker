@@ -11,18 +11,17 @@
 </head>
 
 <body>
-
   <div class="dashboard-container">
     <nav class="container d-flex justify-content-between align-items-center mb-5">
-      <h3 class="fw-bold">Habit Tracker</h3>
+      <h3 class="fw-bold m-0">Habit Tracker</h3>
       <button class="btn btn-link text-danger text-decoration-none" id="logoutBtn">Logout</button>
     </nav>
 
     <div class="container">
-      <div class="row">
-        <!-- Profile -->
+      <div class="row g-4">
         <div class="col-md-4">
           <div class="profile-card text-center">
+
             <div class="avatar-wrap mb-3">
               <div id="avatar-fallback" class="avatar-fallback">U</div>
               <img id="avatar-img" class="avatar-img d-none" alt="avatar" />
@@ -47,27 +46,37 @@
           </div>
         </div>
 
-        <!-- Habits -->
         <div class="col-md-8">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+              <h4 class="fw-bold m-0">My Habits</h4>
 
-          <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-            <div class="d-flex align-items-center gap-3 flex-wrap">
-              <h4 class="fw-bold mb-0">My Habits</h4>
+              <div class="d-inline-flex align-items-center gap-2 ms-md-2" role="group" aria-label="Habit filters">
+                <button id="filterActiveBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Active</button>
+                <button id="filterArchivedBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Archived</button>
+                <button id="filterCalendarBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Calendar</button>
+              </div>
 
-              <div class="habit-filter">
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="filterActiveBtn">
-                  Active
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="filterArchivedBtn">
-                  Archived
-                </button>
+              <div id="calendarControls" class="d-none align-items-center gap-2 ms-md-2">
+                <button id="calPrevBtn" class="btn btn-sm btn-light border rounded-pill px-3">←</button>
+                <button id="calTodayBtn" class="btn btn-sm btn-light border rounded-pill px-3">Today</button>
+                <button id="calNextBtn" class="btn btn-sm btn-light border rounded-pill px-3">→</button>
+
+                <div class="ms-2 small text-muted">
+                  <span class="me-1">Days:</span>
+                  <select id="calDaysSelect" class="form-select form-select-sm d-inline-block" style="width:auto">
+                    <option value="5">5</option>
+                    <option value="7" selected>7</option>
+                    <option value="14">14</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            <button class="btn btn-sm btn-primary rounded-pill px-3"
+            <button id="addHabitBtn"
+                    class="btn btn-sm btn-primary rounded-pill px-3"
                     data-bs-toggle="modal"
-                    data-bs-target="#addHabitModal"
-                    id="addHabitBtn">
+                    data-bs-target="#addHabitModal">
               + Add New
             </button>
           </div>
@@ -76,7 +85,6 @@
             <p class="text-center text-muted mt-4">Loading...</p>
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -136,10 +144,9 @@
 
         <form id="createHabitForm">
           <div class="modal-body">
-
             <div class="mb-3">
               <label class="form-label">Name</label>
-              <input class="form-control" id="habit-name" placeholder="Drink water" required />
+              <input class="form-control" id="habit-name" placeholder="Drink water" />
             </div>
 
             <div class="mb-3">
@@ -157,6 +164,19 @@
                 </select>
               </div>
 
+              <div id="custom-days-container" class="mb-3 d-none">
+                <label class="form-label small text-muted">Choose week days: </label>
+                <div class="d-flex justify-content-between bg-light p-2 rounded">
+                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="1"> <br>Mo</label>
+                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="2"> <br>Tu</label>
+                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="3"> <br>We</label>
+                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="4"> <br>Th</label>
+                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="5"> <br>Fr</label>
+                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="6"> <br>Sa</label>
+                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="0"> <br>Su</label>
+                </div>
+              </div>
+
               <div class="col-6">
                 <label class="form-label">Color</label>
                 <input class="form-control form-control-color w-100" id="habit-color" value="#6c63ff" type="color" />
@@ -170,7 +190,7 @@
               </div>
               <div class="col-6">
                 <label class="form-label">Goal unit</label>
-                <input class="form-control" id="habit-unit" placeholder="cups" />
+                <input class="form-control" id="habit-unit" placeholder="cups / pages / words" />
               </div>
             </div>
 
