@@ -1,6 +1,6 @@
 console.log("dashboard.js is running");
 
-let CURRENT_FILTER = "active"; 
+let CURRENT_FILTER = "active";
 
 document.addEventListener("DOMContentLoaded", () => {
   const token = localStorage.getItem("token");
@@ -51,6 +51,8 @@ function setupHabitsFilter() {
   const addHabitBtn = document.getElementById("addHabitBtn");
 
   function paint() {
+    if (!activeBtn || !archivedBtn || !addHabitBtn) return;
+
     if (CURRENT_FILTER === "active") {
       activeBtn.classList.add("btn-secondary");
       activeBtn.classList.remove("btn-outline-secondary");
@@ -72,17 +74,14 @@ function setupHabitsFilter() {
     }
   }
 
-  activeBtn?.addEventListener("click", async () => {
-    CURRENT_FILTER = "active";
+  async function setFilter(filter) {
+    CURRENT_FILTER = filter;
     paint();
     await safeLoadHabits();
-  });
+  }
 
-  archivedBtn?.addEventListener("click", async () => {
-    CURRENT_FILTER = "archived";
-    paint();
-    await safeLoadHabits();
-  });
+  activeBtn?.addEventListener("click", () => setFilter("active"));
+  archivedBtn?.addEventListener("click", () => setFilter("archived"));
 
   paint();
 }
@@ -112,11 +111,7 @@ function setupProfileSave() {
 
       Object.keys(payload).forEach((k) => !payload[k] && delete payload[k]);
 
-      const resp = await apiRequest("/api/users/me", {
-        method: "PATCH",
-        body: payload,
-      });
-
+      const resp = await apiRequest("/api/users/me", { method: "PATCH", body: payload });
       renderProfile(resp.user || resp);
 
       ok.classList.remove("d-none");
@@ -202,7 +197,9 @@ async function safeLoadHabits() {
   } catch (e) {
     console.error("Habits load failed:", e);
     document.getElementById("habits-container").innerHTML = `
-      <div class="alert alert-danger">Habits load failed: ${escapeHtml(e.message || "")}</div>`;
+      <div class="alert alert-danger">
+        Habits load failed: ${escapeHtml(e.message || "")}
+      </div>`;
   }
 }
 
@@ -248,29 +245,24 @@ function renderHabitCard(h) {
 
         <div class="habit-meta-row">
           <span class="meta-badge">${escapeHtml(freq)}</span>
-
           <span class="meta-sep">|</span>
           <span class="meta-item"><span class="meta-label">Goal:</span> <span class="meta-value">${escapeHtml(goalText)}</span></span>
-
-          ${start ? `<span class="meta-sep">|</span>
-          <span class="meta-item"><span class="meta-label">Start:</span> <span class="meta-value">${escapeHtml(start)}</span></span>` : ""}
+          ${
+            start
+              ? `<span class="meta-sep">|</span>
+                 <span class="meta-item"><span class="meta-label">Start:</span> <span class="meta-value">${escapeHtml(start)}</span></span>`
+              : ""
+          }
         </div>
       </div>
 
       <div class="habit-actions">
         ${
           isArchived
-            ? `<button data-action="unarchive" data-id="${escapeHtml(h._id)}" class="btn btn-sm btn-outline-secondary rounded-pill">
-                 Unarchive
-               </button>`
-            : `<button data-action="archive" data-id="${escapeHtml(h._id)}" class="btn btn-sm btn-outline-secondary rounded-pill">
-                 Archive
-               </button>`
+            ? `<button data-action="unarchive" data-id="${escapeHtml(h._id)}" class="btn btn-sm btn-outline-secondary rounded-pill">Unarchive</button>`
+            : `<button data-action="archive" data-id="${escapeHtml(h._id)}" class="btn btn-sm btn-outline-secondary rounded-pill">Archive</button>`
         }
-
-        <button data-action="delete" data-id="${escapeHtml(h._id)}" class="btn btn-sm btn-outline-danger rounded-pill">
-          Delete
-        </button>
+        <button data-action="delete" data-id="${escapeHtml(h._id)}" class="btn btn-sm btn-outline-danger rounded-pill">Delete</button>
       </div>
     </div>
   `;
@@ -304,7 +296,11 @@ async function createHabit() {
         frequency,
         color,
         startDate,
-        goal: { target: Math.max(target, 1), unit },
+        goal: {
+          type: "count",       
+          target: Math.max(target, 1),
+          unit,
+        },
       },
     });
 
@@ -314,7 +310,6 @@ async function createHabit() {
     document.getElementById("createHabitForm")?.reset();
 
     CURRENT_FILTER = "active";
-    setupHabitsFilter();
     await safeLoadHabits();
   } catch (e) {
     errEl.textContent = e.message;
@@ -349,11 +344,7 @@ function formatFrequency(f) {
 function formatDate(d) {
   const dt = new Date(d);
   if (Number.isNaN(dt.getTime())) return "";
-  return dt.toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  });
+  return dt.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
 }
 
 function escapeHtml(s) {
