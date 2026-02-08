@@ -355,7 +355,6 @@ async function renderStatsView() {
       <div class="p-3">
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h4 class="m-0">Statistics</h4>
-          <span class="text-muted small">Last ${days} days</span>
         </div>
 
         <div class="row g-3">
@@ -676,9 +675,9 @@ async function renderStatsView() {
 
   const ov = resp?.overview || {};
   const byDayRaw = Array.isArray(ov.byDay) ? ov.byDay : [];
-  const byDay = byDayRaw.map(d => ({
+  const byDay = byDayRaw.map((d) => ({
     ...d,
-    rate: (d.total && d.total > 0) ? (d.done / d.total) : 0
+    rate: d.total && d.total > 0 ? d.done / d.total : 0,
   }));
 
   const completionPercent = Math.round((ov.completionRate || 0) * 100);
@@ -718,7 +717,16 @@ async function renderStatsView() {
       </div>
 
       <div class="bg-white rounded-4 shadow-sm p-3 mb-3">
-        <div class="fw-semibold mb-2">Daily completion %</div>
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+          <div class="fw-semibold" id="statsChartTitle">Daily completion %</div>
+
+          <select id="statsRange" class="form-select form-select-sm" style="width:auto">
+            <option value="daily" selected>Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+
         <canvas id="statsChart" height="120"></canvas>
       </div>
 
@@ -726,7 +734,9 @@ async function renderStatsView() {
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="fw-semibold">Calendar</div>
         </div>
+
         <div id="heatmapWrap"></div>
+
         <div class="text-muted small mt-2">
           Darker = higher completion
         </div>
@@ -734,8 +744,103 @@ async function renderStatsView() {
     </div>
   `;
 
-  renderStatsChart(byDay.slice(-30));  
-  renderHeatmapYear(2026, byDay);
+  renderRange("daily");
+  const select = document.getElementById("statsRange");
+  select?.addEventListener("change", () => {
+    renderRange(select.value);
+  });
+
+  function aggregateByWeek(arr) {
+    function getISOWeekKey(dateStr) {
+      const d = new Date(dateStr + "T12:00:00");
+      const day = (d.getDay() + 6) % 7; 
+      d.setDate(d.getDate() - day + 3); 
+      const firstThu = new Date(d.getFullYear(), 0, 4);
+      const firstDay = (firstThu.getDay() + 6) % 7;
+      firstThu.setDate(firstThu.getDate() - firstDay + 3);
+      const week = 1 + Math.round((d - firstThu) / (7 * 24 * 3600 * 1000));
+      const year = d.getFullYear();
+      return `${year}-W${String(week).padStart(2, "0")}`;
+    }
+
+    const map = new Map();
+    for (const x of arr) {
+      if (!x?.date) continue;
+      const key = getISOWeekKey(x.date.slice(0, 10));
+      const cur = map.get(key) || { key, done: 0, total: 0 };
+      cur.done += x.done || 0;
+      cur.total += x.total || 0;
+      map.set(key, cur);
+    }
+
+    return Array.from(map.values())
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .map((w) => ({
+        date: w.key,
+        done: w.done,
+        total: w.total,
+        rate: w.total ? w.done / w.total : 0,
+      }));
+  }
+
+  function aggregateByMonth(arr) {
+    const map = new Map(); 
+    for (const d of arr) {
+      const key = (d.date || "").slice(0, 7);
+      if (!key) continue;
+      const cur = map.get(key) || { key, done: 0, total: 0 };
+      cur.done += d.done || 0;
+      cur.total += d.total || 0;
+      map.set(key, cur);
+    }
+    return Array.from(map.values())
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .map((m) => ({
+        date: m.key,
+        done: m.done,
+        total: m.total,
+        rate: m.total ? m.done / m.total : 0,
+      }));
+  }
+
+  function renderRange(range) {
+    const title = document.getElementById("statsChartTitle");
+    const hint = document.getElementById("heatmapHint");
+
+    if (range === "daily") {
+      if (title) title.textContent = "Daily completion %";
+
+      const START_DATE = "2026-01-01";
+      const daily = byDay.filter(d => d.date >= START_DATE);
+
+      renderStatsChart(daily);
+      renderHeatmapYear(2026, byDay);
+      return;
+    }
+
+    if (range === "weekly") {
+      if (title) title.textContent = "Weekly completion %";
+
+      const START_DATE = "2026-01-01";
+      const dailyFrom2026 = byDay.filter(d => d.date >= START_DATE);
+
+      const weekly = aggregateByWeek(dailyFrom2026);
+      renderStatsChart(weekly);
+      renderHeatmapYear(2026, byDay);
+      return;
+    }
+
+    if (range === "monthly") {
+      if (title) title.textContent = "Monthly completion %";
+
+      const START_DATE = "2026-01-01";
+      const dailyFrom2026 = byDay.filter(d => d.date >= START_DATE);
+
+      const monthly = aggregateByMonth(dailyFrom2026);
+      renderStatsChart(monthly);
+      renderHeatmapYear(2026, byDay);
+      return;
+    }
 }
 
 function renderStatsChart(byDay) {
@@ -1003,4 +1108,4 @@ function renderHeatmapYear(year, byDay) {
       ${rowsHtml}
     </div>
   `;
-}
+}}
