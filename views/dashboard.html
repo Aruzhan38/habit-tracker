@@ -56,9 +56,13 @@
                 <button id="filterArchivedBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Archived</button>
                 <button id="filterCalendarBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Calendar</button>
                 <button id="filterStatsBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Stats</button>
-                <!-- TAG FILTER -->
-                <div id="tagsFilter" class="d-flex gap-2 flex-wrap mb-3"></div>
-
+                <!-- TAG FILTER 
+                <div id="tagsFilter" class="d-flex gap-2 flex-wrap mb-3"></div>-->
+                <button class="btn btn-outline-success dropdown-toggle" type="button" id="tagsDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                  ☰ Tags
+                </button>
+                <ul class="dropdown-menu" id="tagsFilter">
+                </ul>
               </div>
 
               <div id="calendarControls" class="d-none align-items-center gap-2 ms-md-2">
