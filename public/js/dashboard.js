@@ -5,6 +5,8 @@ let CURRENT_VIEW = "list";
 let CAL_DAYS = 7;
 let CAL_ANCHOR = isoToday();
 let STATS_CHART = null;
+let TAGS = [];
+let CURRENT_TAG = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   const token = localStorage.getItem("token");
@@ -15,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setupLogout();
   setupProfileSave();
+  setupCreateTag();
   setupCreateHabit();
   setupHabitActions();
   setupHabitsTabs();
@@ -37,7 +40,9 @@ async function init() {
     window.location.href = "/auth.html";
     return;
   }
+  await loadTags();
   await refreshHabits();
+
 }
 
 function isoToday() {
@@ -63,6 +68,8 @@ function setupHabitsTabs() {
   const calNextBtn = document.getElementById("calNextBtn");
   const calTodayBtn = document.getElementById("calTodayBtn");
   const calDaysSelect = document.getElementById("calDaysSelect");
+  const calDaysCustomWrap = document.getElementById("calDaysCustomWrap");
+  const calDaysCustom = document.getElementById("calDaysCustom");
 
   function setBtnInactive(btn) {
     if (!btn) return;
@@ -147,7 +154,21 @@ function setupHabitsTabs() {
   });
 
   calDaysSelect?.addEventListener("change", async () => {
-    CAL_DAYS = clampInt(parseInt(calDaysSelect.value, 10), 1, 30);
+    if (calDaysSelect.value === "custom") {
+      if (calDaysCustomWrap) calDaysCustomWrap.classList.remove("d-none");
+      const raw = parseInt(calDaysCustom?.value || "7", 10);
+      CAL_DAYS = clampInt(raw, 1, 30);
+    } else {
+      if (calDaysCustomWrap) calDaysCustomWrap.classList.add("d-none");
+      CAL_DAYS = clampInt(parseInt(calDaysSelect.value, 10), 1, 30);
+    }
+    await refreshHabits();
+  });
+
+  calDaysCustom?.addEventListener("input", async () => {
+    if (calDaysSelect?.value !== "custom") return;
+    const raw = parseInt(calDaysCustom.value || "7", 10);
+    CAL_DAYS = clampInt(raw, 1, 30);
     await refreshHabits();
   });
 
@@ -217,7 +238,12 @@ async function renderListView() {
   const box = document.getElementById("habits-container");
   box.innerHTML = `<p class="text-center text-muted mt-4">Loading...</p>`;
 
-  const data = await apiRequest(`/api/habits?status=${CURRENT_FILTER}&limit=50`);
+  const tagQuery = CURRENT_TAG ? `&tag=${CURRENT_TAG}` : "";
+  const data = await apiRequest(
+    `/api/habits?status=${CURRENT_FILTER}${tagQuery}&limit=50`
+  );
+
+
   const habits = normalizeHabitsArray(data);
 
   document.getElementById("habits-count").textContent = habits.length;
@@ -259,7 +285,7 @@ async function renderCalendarView() {
   box.innerHTML = `<p class="text-center text-muted mt-4">Loading calendar...</p>`;
 
   const data = await apiRequest(
-    `/api/habits/daily?date=${encodeURIComponent(CAL_ANCHOR)}&days=${CAL_DAYS}`
+    `/api/habits/daily?date=${encodeURIComponent(CAL_ANCHOR)}&days=${CAL_DAYS}${CURRENT_TAG ? `&tag=${CURRENT_TAG}` : ""}`
   );
 
   const dates = data.dates || [];
@@ -449,6 +475,10 @@ function renderByDayBars(byDay) {
 }
 
 async function createHabit() {
+  const selectedTags = Array.from(
+    document.querySelectorAll(".habit-tag-checkbox:checked")
+  ).map(cb => cb.value);
+
   const errEl = document.getElementById("habit-error");
   errEl?.classList.add("d-none");
 
@@ -467,6 +497,14 @@ async function createHabit() {
     return;
   }
 
+  if (!selectedTags.length) {
+    if (errEl) {
+      errEl.textContent = "Select at least one tag";
+      errEl.classList.remove("d-none");
+    }
+    return;
+  }
+
   const payload = {
     name,
     description: document.getElementById("habit-desc").value.trim(),
@@ -474,6 +512,7 @@ async function createHabit() {
     color: document.getElementById("habit-color").value,
     startDate: document.getElementById("habit-startDate").value,
     schedule: { daysOfWeek: frequency === "custom" ? selectedDays : [] },
+    tags: selectedTags,
     goal: {
       type: "count",
       target: parseInt(document.getElementById("habit-target").value || "1", 10),
@@ -490,6 +529,7 @@ async function createHabit() {
 
     const createdHabit = createdHabitResp?.habit || createdHabitResp;
     console.log("HABIT CREATED:", createdHabit);
+
 
     const reminder = collectReminderData();
     console.log("REMINDER PAYLOAD:", reminder);
@@ -513,6 +553,9 @@ async function createHabit() {
 
     document.getElementById("createHabitForm").reset();
     document.getElementById("custom-days-container").classList.add("d-none");
+    document
+      .querySelectorAll(".habit-tag-checkbox")
+      .forEach(cb => (cb.checked = false));
     resetReminderForm();
 
     CURRENT_VIEW = "list";
@@ -588,6 +631,18 @@ function setupLogout() {
   });
 }
 
+/*function setupCreateHabit() {
+  document.getElementById("createHabitForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await createHabit();
+  });
+
+  document.getElementById("habit-frequency")?.addEventListener("change", (e) => {
+    const container = document.getElementById("custom-days-container");
+    if (container) container.classList.toggle("d-none", e.target.value !== "custom");
+  });
+}*/
+
 function setupCreateHabit() {
   document.getElementById("createHabitForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -599,6 +654,7 @@ function setupCreateHabit() {
     if (container) container.classList.toggle("d-none", e.target.value !== "custom");
   });
 }
+
 
 function normalizeHabitsArray(data) {
   return Array.isArray(data) ? data : data.habits || data.items || [];
@@ -1109,3 +1165,132 @@ function renderHeatmapYear(year, byDay) {
     </div>
   `;
 }}
+
+
+
+
+
+
+
+async function loadTags() {
+  try {
+    TAGS = await apiRequest("/api/tags");
+    renderTagsFilter();
+  } catch (e) {
+    console.error("Tags load error", e);
+  }
+}
+
+function setupCreateTag() {
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest("#createTagBtn");
+    if (!btn) return;
+
+    const errEl = document.getElementById("tag-error");
+    errEl?.classList.add("d-none");
+
+    const nameEl = document.getElementById("new-tag-name");
+    const colorEl = document.getElementById("new-tag-color");
+
+    const name = nameEl?.value?.trim();
+    const color = colorEl?.value || "#22c55e";
+
+    if (!name) {
+      if (errEl) {
+        errEl.textContent = "Tag name is required";
+        errEl.classList.remove("d-none");
+      }
+      return;
+    }
+
+    try {
+      btn.disabled = true;
+      await apiRequest("/api/tags", { method: "POST", body: { name, color } });
+      if (nameEl) nameEl.value = "";
+      await loadTags();
+      renderTagsInHabitForm();
+    } catch (e) {
+      console.error("Create tag error:", e);
+      if (errEl) {
+        errEl.textContent = e.message || "Failed to create tag";
+        errEl.classList.remove("d-none");
+      }
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+function renderTagsFilter() {
+  const box = document.getElementById("tagsFilter");
+  if (!box) return;
+
+  box.innerHTML = `
+    <button class="btn btn-sm rounded-pill ${
+      !CURRENT_TAG ? "btn-primary" : "btn-outline-secondary"
+    }" data-tag="">
+      All
+    </button>
+    ${TAGS.map(t => `
+      <button
+        class="btn btn-sm rounded-pill ${
+          CURRENT_TAG === t._id ? "btn-primary" : "btn-outline-secondary"
+        }"
+        data-tag="${t._id}"
+        style="border-color:${t.color};color:${t.color}"
+      >
+        ${escapeHtml(t.name)}
+      </button>
+    `).join("")}
+  `;
+
+  box.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      CURRENT_TAG = btn.dataset.tag || null;
+      renderTagsFilter();
+      await refreshHabits();
+    });
+  });
+}
+
+function renderTagsInHabitForm() {
+  const box = document.getElementById("habitTags");
+  if (!box) {
+    console.warn("habitTags container not found");
+    return;
+  }
+
+  if (!Array.isArray(TAGS) || TAGS.length === 0) {
+    box.innerHTML = `<div class="text-muted small">No tags yet</div>`;
+    return;
+  }
+
+  box.innerHTML = TAGS.map(t => `
+    <label class="btn btn-sm btn-outline-secondary rounded-pill">
+      <input
+        type="checkbox"
+        class="habit-tag-checkbox d-none"
+        value="${t._id}"
+      >
+      ${escapeHtml(t.name)}
+    </label>
+  `).join("");
+
+  box.querySelectorAll("label").forEach(label => {
+    const input = label.querySelector("input");
+    input.addEventListener("change", () => {
+      label.classList.toggle("btn-primary", input.checked);
+      label.classList.toggle("btn-outline-secondary", !input.checked);
+    });
+  });
+}
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const modal = document.getElementById("addHabitModal");
+  if (!modal) return;
+
+  modal.addEventListener("shown.bs.modal", () => {
+    renderTagsInHabitForm();
+  });
+});

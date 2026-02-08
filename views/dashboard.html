@@ -56,6 +56,9 @@
                 <button id="filterArchivedBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Archived</button>
                 <button id="filterCalendarBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Calendar</button>
                 <button id="filterStatsBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Stats</button>
+                <!-- TAG FILTER -->
+                <div id="tagsFilter" class="d-flex gap-2 flex-wrap mb-3"></div>
+
               </div>
 
               <div id="calendarControls" class="d-none align-items-center gap-2 ms-md-2">
@@ -69,7 +72,13 @@
                     <option value="5">5</option>
                     <option value="7" selected>7</option>
                     <option value="14">14</option>
+                    <option value="custom">Custom</option>
                   </select>
+                  <span id="calDaysCustomWrap" class="ms-2 d-none">
+                    <span class="me-1">Custom:</span>
+                    <input id="calDaysCustom" type="number" min="1" max="30" value="7"
+                           class="form-control form-control-sm d-inline-block" style="width:72px" />
+                  </span>
                 </div>
               </div>
 
@@ -305,6 +314,22 @@
 
             <div class="alert alert-danger d-none mt-3" id="habit-error"></div>
           </div>
+          <hr class="my-3">
+
+          <h6 class="fw-bold mb-2">Tags</h6>
+          <div class="d-flex flex-wrap gap-2 align-items-end mb-2">
+            <div>
+              <label class="form-label small">Tag name</label>
+              <input class="form-control form-control-sm" id="new-tag-name" placeholder="Work" />
+            </div>
+            <div>
+              <label class="form-label small">Color</label>
+              <input class="form-control form-control-color form-control-sm" id="new-tag-color" value="#22c55e" type="color" />
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" id="createTagBtn">+ Add Tag</button>
+          </div>
+          <div class="alert alert-danger d-none" id="tag-error"></div>
+          <div id="habitTags" class="d-flex flex-wrap gap-2"></div>
 
           <div class="modal-footer">
             <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>

@@ -5,17 +5,28 @@ const Habit = require("../models/habit");
 exports.createTag = async (req, res) => {
   try {
     const { name, color } = req.body;
-    const tag = new Tag({
-      name,
-      color,
-      user: req.user.id 
+
+    const exists = await Tag.findOne({
+      user: req.user.id,
+      name: name.trim()
     });
-    await tag.save();
+
+    if (exists) {
+      return res.status(400).json({ message: "Tag already exists" });
+    }
+
+    const tag = await Tag.create({
+      name: name.trim(),
+      color,
+      user: req.user.id
+    });
+
     res.status(201).json(tag);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
   }
 };
+
 
 // GET /tags
 exports.getTags = async (req, res) => {

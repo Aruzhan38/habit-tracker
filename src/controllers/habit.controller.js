@@ -29,13 +29,18 @@ exports.getDailyView = async (req, res, next) => {
     const userId = getUserId(req);
     const endDateStr = (req.query.date || toISODate(new Date())).slice(0, 10);
     const days = Math.max(1, Math.min(parseInt(req.query.days || "7", 10), 30));
+    const tag = req.query.tag;
 
     const dates = [];
     for (let i = 0; i < days; i++) {
       dates.unshift(addDays(endDateStr, -i));
     }
 
-    const habits = await Habit.find({ user: userId, status: "active" }).lean();
+    const habits = await Habit.find({
+      user: userId,
+      status: "active",
+      ...(tag && { tags: tag }),
+    }).lean();
 
     const result = habits.map((h) => {
       const completions = h.completions || [];
@@ -100,8 +105,13 @@ exports.getCalendarMap = async (req, res, next) => {
 
     const from = (req.query.from || toISODate(new Date())).slice(0, 10);
     const to = (req.query.to || from).slice(0, 10);
+    const tag = req.query.tag;
 
-    const habits = await Habit.find({ user: userId, status: "active" }).lean();
+    const habits = await Habit.find({
+      user: userId,
+      status: "active",
+      ...(tag && { tags: tag }),
+    }).lean();
 
     const items = habits.map((h) => {
       const map = {};
@@ -132,6 +142,10 @@ exports.getCalendarMap = async (req, res, next) => {
 
 exports.createHabit = async (req, res) => {
   try {
+    if (!Array.isArray(req.body.tags) || req.body.tags.length === 0) {
+      return res.status(400).json({ error: "At least one tag is required" });
+    }
+
     const habit = await Habit.create({
       ...req.body,
       user: req.user.id,
@@ -143,7 +157,7 @@ exports.createHabit = async (req, res) => {
   }
 };
 
-exports.getHabits = async (req, res) => {
+/*exports.getHabits = async (req, res) => {
   try {
     const filter = { user: req.user.id };
 
@@ -156,7 +170,24 @@ exports.getHabits = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+};*/
+// GET /habits?status=active&tag=TAG_ID
+exports.getHabits = async (req, res) => {
+  const { status, tag } = req.query;
+
+  const query = {
+    user: req.user.id,
+    ...(status && { status }),
+    ...(tag && { tags: tag })
+  };
+
+  const habits = await Habit
+    .find(query)
+    .populate("tags");
+
+  res.json(habits);
 };
+
 
 exports.getHabitById = async (req, res) => {
   try {
