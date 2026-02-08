@@ -4,8 +4,7 @@ const mongoose = require("mongoose");
 const path = require("path");
 const cors = require("cors");
 
-const { startReminderCron } = require("./src/services/reminderCron.service");
-const { verifyEmailTransport } = require("./src/services/email.service"); 
+const { startReminderCron } = require("./src/services/reminderCron.service"); 
 
 const app = express();
 const port = process.env.PORT || 3001;

@@ -55,6 +55,7 @@
                 <button id="filterActiveBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Active</button>
                 <button id="filterArchivedBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Archived</button>
                 <button id="filterCalendarBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Calendar</button>
+                <button id="filterStatsBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Stats</button>
               </div>
 
               <div id="calendarControls" class="d-none align-items-center gap-2 ms-md-2">
@@ -71,6 +72,18 @@
                   </select>
                 </div>
               </div>
+
+              <div id="statsControls" class="d-none align-items-center gap-2 ms-md-2">
+                <div class="ms-2 small text-muted">
+                  <span class="me-1">Days:</span>
+                  <select id="statsDaysSelect" class="form-select form-select-sm d-inline-block" style="width:auto">
+                    <option value="7" selected>7</option>
+                    <option value="14">14</option>
+                    <option value="30">30</option>
+                    <option value="60">60</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <button id="addHabitBtn"
@@ -84,6 +97,62 @@
           <div id="habits-container">
             <p class="text-center text-muted mt-4">Loading...</p>
           </div>
+
+          <template id="tplStats">
+            <div class="stats-wrap">
+              <h5 class="stats-title">Statistics</h5>
+
+              <div class="stats-kpis">
+                <div class="kpi-card">
+                  <div class="kpi-label">Completion</div>
+                  <div class="kpi-value" id="kpiCompletion">0%</div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Current streak</div>
+                  <div class="kpi-value" id="kpiCurrentStreak">0</div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Best streak</div>
+                  <div class="kpi-value" id="kpiBestStreak">0</div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Total habits</div>
+                  <div class="kpi-value" id="kpiTotalHabits">0</div>
+                </div>
+              </div>
+
+              <div class="stats-card">
+                <h6>Daily completion %</h6>
+                <div class="stats-chart-wrap">
+                  <div class="stats-chart-box">
+                    <canvas id="statsChart"></canvas>
+                  </div>
+                </div>
+                <div class="stats-note mt-2">Based on your check-ins (completions).</div>
+              </div>
+
+              <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h6 class="m-0">Calendar</h6>
+                  <div class="stats-note" id="statsCalRange">last 42 days</div>
+                </div>
+
+                <div class="stats-cal-wrap mt-2">
+                  <div class="stats-cal">
+                    <div class="stats-cal-weekdays" aria-hidden="true">
+                      <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                    </div>
+
+                    <div class="stats-cal-grid">
+                      <div class="stats-cal-months" id="statsMonths"></div>
+                      <div class="stats-cal-cells" id="statsHeatmap"></div>
+                      <div class="stats-legend">Darker = higher completion</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -164,22 +233,22 @@
                 </select>
               </div>
 
-              <div id="custom-days-container" class="mb-3 d-none">
-                <label class="form-label small text-muted">Choose week days: </label>
-                <div class="d-flex justify-content-between bg-light p-2 rounded">
-                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="1"> <br>Mo</label>
-                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="2"> <br>Tu</label>
-                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="3"> <br>We</label>
-                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="4"> <br>Th</label>
-                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="5"> <br>Fr</label>
-                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="6"> <br>Sa</label>
-                  <label class="text-center"><input type="checkbox" class="day-checkbox" value="0"> <br>Su</label>
-                </div>
-              </div>
-
               <div class="col-6">
                 <label class="form-label">Color</label>
                 <input class="form-control form-control-color w-100" id="habit-color" value="#6c63ff" type="color" />
+              </div>
+            </div>
+
+            <div id="custom-days-container" class="mb-3 d-none mt-2">
+              <label class="form-label small text-muted">Choose week days:</label>
+              <div class="d-flex justify-content-between bg-light p-2 rounded">
+                <label class="text-center"><input type="checkbox" class="day-checkbox" value="1"> <br>Mo</label>
+                <label class="text-center"><input type="checkbox" class="day-checkbox" value="2"> <br>Tu</label>
+                <label class="text-center"><input type="checkbox" class="day-checkbox" value="3"> <br>We</label>
+                <label class="text-center"><input type="checkbox" class="day-checkbox" value="4"> <br>Th</label>
+                <label class="text-center"><input type="checkbox" class="day-checkbox" value="5"> <br>Fr</label>
+                <label class="text-center"><input type="checkbox" class="day-checkbox" value="6"> <br>Sa</label>
+                <label class="text-center"><input type="checkbox" class="day-checkbox" value="0"> <br>Su</label>
               </div>
             </div>
 
@@ -249,6 +318,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/js/api.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/js/dashboard.js"></script>
 </body>
 </html>
