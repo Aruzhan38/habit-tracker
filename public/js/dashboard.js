@@ -725,7 +725,6 @@ async function renderStatsView() {
       <div class="bg-white rounded-4 shadow-sm p-3">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="fw-semibold">Calendar</div>
-          <div class="text-muted small">last ${byDay.length} days</div>
         </div>
         <div id="heatmapWrap"></div>
         <div class="text-muted small mt-2">
