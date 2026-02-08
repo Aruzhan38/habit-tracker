@@ -157,21 +157,7 @@ exports.createHabit = async (req, res) => {
   }
 };
 
-/*exports.getHabits = async (req, res) => {
-  try {
-    const filter = { user: req.user.id };
 
-    if (req.query.status) {
-      filter.status = req.query.status; 
-    }
-
-    const habits = await Habit.find(filter).sort({ createdAt: -1 });
-    res.json({ habits });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};*/
-// GET /habits?status=active&tag=TAG_ID
 exports.getHabits = async (req, res) => {
   const { status, tag } = req.query;
 

@@ -631,18 +631,6 @@ function setupLogout() {
   });
 }
 
-/*function setupCreateHabit() {
-  document.getElementById("createHabitForm")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    await createHabit();
-  });
-
-  document.getElementById("habit-frequency")?.addEventListener("change", (e) => {
-    const container = document.getElementById("custom-days-container");
-    if (container) container.classList.toggle("d-none", e.target.value !== "custom");
-  });
-}*/
-
 function setupCreateHabit() {
   document.getElementById("createHabitForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
