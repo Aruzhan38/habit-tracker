@@ -1,4 +1,21 @@
 const reminderService = require("../services/reminder.service");
+const Habit = require("../models/habit");
+
+function normReminder(r) {
+  if (!r || typeof r !== "object") return null;
+
+  const time = String(r.time || "").trim();
+  if (!time) return null;
+
+  const daysOfWeek = Array.isArray(r.daysOfWeek) ? r.daysOfWeek.map(Number) : [];
+
+  return {
+    time,
+    daysOfWeek,
+    enabled: r.enabled !== false,
+    note: String(r.note || "")
+  };
+}
 
 async function createReminder(req, res, next) {
   try {
@@ -41,7 +58,7 @@ async function deleteReminder(req, res, next) {
   }
 }
 
-exports.replaceReminders = async (req, res, next) => {
+const replaceReminders = async (req, res, next) => {
   try {
     const { habitId } = req.params;
 
@@ -52,7 +69,7 @@ exports.replaceReminders = async (req, res, next) => {
 
     let list = [];
     if (Array.isArray(incoming)) list = incoming;
-    else if (Array.isArray(incoming.reminders)) list = incoming.reminders;
+    else if (incoming && Array.isArray(incoming.reminders)) list = incoming.reminders;
     else if (incoming && typeof incoming === "object") list = [incoming];
 
     const normalized = list.map(normReminder).filter(Boolean);
@@ -64,6 +81,6 @@ exports.replaceReminders = async (req, res, next) => {
   } catch (e) {
     next(e);
   }
-}
+};
 
 module.exports = { createReminder, getReminders, deleteReminder, replaceReminders };

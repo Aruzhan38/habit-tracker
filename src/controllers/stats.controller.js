@@ -26,22 +26,6 @@ function addDaysISO(isoDateStr, delta) {
   return d.toISOString().slice(0, 10);
 }
 
-function isTargetDayForHabit(habit, dow) {
-  const freq = habit.frequency;
-
-  if (freq === "daily") return true;
-  if (freq === "weekly") return true;
-
-  // custom
-  const days = Array.isArray(habit.schedule?.daysOfWeek) ? habit.schedule.daysOfWeek : [];
-  return days.length ? days.includes(dow) : true;
-}
-
-function completionOnDayISO(habit, dateIso) {
-  const comps = Array.isArray(habit.completions) ? habit.completions : [];
-  return comps.find((c) => iso(c.date) === dateIso) || null;
-}
-
 function weekStartISO(dateIso) {
   const d = new Date(dateIso + "T12:00:00Z");
   const dow = d.getUTCDay(); 
@@ -55,6 +39,21 @@ function weekEndISO(dateIso) {
   return addDaysISO(start, 6);
 }
 
+function isTargetDayForHabit(habit, dow) {
+  const freq = habit.frequency;
+
+  if (freq === "daily") return true;
+  if (freq === "weekly") return true; 
+
+  const days = Array.isArray(habit.schedule?.daysOfWeek) ? habit.schedule.daysOfWeek : [];
+  return days.length ? days.includes(dow) : true;
+}
+
+function completionOnDayISO(habit, dateIso) {
+  const comps = Array.isArray(habit.completions) ? habit.completions : [];
+  return comps.find((c) => iso(c.date) === dateIso) || null;
+}
+
 function hasCompletionInWeek(habit, anyDateIsoInWeek) {
   const start = weekStartISO(anyDateIsoInWeek);
   const end = weekEndISO(anyDateIsoInWeek);
@@ -63,14 +62,62 @@ function hasCompletionInWeek(habit, anyDateIsoInWeek) {
   for (const c of comps) {
     const d = iso(c.date);
     if (d >= start && d <= end) {
-      if (c.completed !== false && (Number(c.value ?? 1) > 0)) return true;
+      if (c.completed !== false && Number(c.value ?? 1) > 0) return true;
     }
   }
   return false;
 }
+
+function calcStreakForHabit(habit) {
+  if (habit.frequency === "weekly") return { current: 0, best: 0 };
+
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(start.getDate() - 365);
+
+  const doneSet = new Set(
+    (habit.completions || [])
+      .filter((c) => c && c.completed !== false && Number(c.value ?? 1) > 0)
+      .map((c) => iso(c.date))
+  );
+
+  let current = 0;
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dayIso = iso(d);
+    const dow = d.getDay();
+
+    if (!isTargetDayForHabit(habit, dow)) continue;
+
+    if (doneSet.has(dayIso)) current++;
+    else break;
+  }
+
+  let best = 0;
+  let run = 0;
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    const dayIso = iso(d);
+    const dow = d.getDay();
+
+    if (!isTargetDayForHabit(habit, dow)) continue;
+
+    if (doneSet.has(dayIso)) {
+      run++;
+      best = Math.max(best, run);
+    } else {
+      run = 0;
+    }
+  }
+
+  return { current, best };
+}
+
 exports.getOverview = async (req, res, next) => {
   try {
-    const days = clampInt(req.query.days || "7", 1, 90);
+    const days = clampInt(req.query.days || "7", 1, 365);
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
@@ -105,7 +152,7 @@ exports.getOverview = async (req, res, next) => {
         }
 
         const c = completionOnDayISO(h, dateIso);
-        if (c && c.completed !== false && (Number(c.value ?? 1) > 0)) done++;
+        if (c && c.completed !== false && Number(c.value ?? 1) > 0) done++;
       }
 
       const rate = total === 0 ? 0 : done / total;
@@ -116,11 +163,21 @@ exports.getOverview = async (req, res, next) => {
     const totalTargets = byDay.reduce((s, x) => s + x.total, 0);
     const completionRate = totalTargets === 0 ? 0 : totalCheckins / totalTargets;
 
+    let bestStreak = 0;
+    let currentStreak = 0;
+    for (const h of habits) {
+      const s = calcStreakForHabit(h);
+      bestStreak = Math.max(bestStreak, s.best);
+      currentStreak = Math.max(currentStreak, s.current);
+    }
+
     return res.json({
       overview: {
         totalHabits,
         totalCheckins,
         completionRate,
+        bestStreak,
+        currentStreak,
         byDay,
       },
     });
@@ -163,20 +220,14 @@ exports.getCalendar = async (req, res, next) => {
         const isTargetDay = isTargetDayForHabit(h, dow);
 
         let completed = false;
-
         if (h.frequency === "weekly") {
           completed = hasCompletionInWeek(h, dateIso);
         } else {
           const c = completionOnDayISO(h, dateIso);
-          completed = !!(c && c.completed !== false && (Number(c.value ?? 1) > 0));
+          completed = !!(c && c.completed !== false && Number(c.value ?? 1) > 0);
         }
 
-        return {
-          date: dateIso,
-          isTargetDay,
-          completed,
-          value: completed ? 1 : 0,
-        };
+        return { date: dateIso, isTargetDay, completed, value: completed ? 1 : 0 };
       });
 
       return {
