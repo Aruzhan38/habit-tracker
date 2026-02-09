@@ -43,8 +43,9 @@ function isTargetDayForHabit(habit, dow) {
   const freq = habit.frequency;
 
   if (freq === "daily") return true;
-  if (freq === "weekly") return true; 
+  if (freq === "weekly") return true;
 
+  // custom
   const days = Array.isArray(habit.schedule?.daysOfWeek) ? habit.schedule.daysOfWeek : [];
   return days.length ? days.includes(dow) : true;
 }
@@ -86,7 +87,7 @@ function calcStreakForHabit(habit) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const dayIso = iso(d);
-    const dow = d.getDay();
+    const dow = d.getDay(); 
 
     if (!isTargetDayForHabit(habit, dow)) continue;
 
