@@ -12,16 +12,24 @@
 
 <body>
   <div class="dashboard-container">
-    <nav class="container d-flex justify-content-between align-items-center mb-5">
-      <h3 class="fw-bold m-0">Habit Tracker</h3>
-      <button class="btn btn-link text-danger text-decoration-none" id="logoutBtn">Logout</button>
+    <nav class="container d-flex justify-content-between align-items-center mb-4">
+      <div class="d-flex align-items-center gap-2">
+        <h3 class="fw-bold m-0">Habit Tracker</h3>
+        <span class="nav-pill" id="navLevelPill">Beginner</span>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#shopModal">
+          🛍️ Shop
+        </button>
+        <button class="btn btn-link text-danger text-decoration-none" id="logoutBtn">Logout</button>
+      </div>
     </nav>
 
     <div class="container">
       <div class="row g-4">
         <div class="col-md-4">
           <div class="profile-card text-center">
-
             <div class="avatar-wrap mb-3">
               <div id="avatar-fallback" class="avatar-fallback">U</div>
               <img id="avatar-img" class="avatar-img d-none" alt="avatar" />
@@ -35,7 +43,20 @@
 
             <div class="text-start">
               <p class="mb-1 small"><strong>Status:</strong> <span id="user-status">Beginner</span></p>
-              <p class="mb-0 small"><strong>Habits:</strong> <span id="habits-count">0</span></p>
+              <p class="mb-1 small"><strong>Habits:</strong> <span id="habits-count">0</span></p>
+              <div class="mt-2 profile-xp">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="small fw-bold">XP</div>
+                  <div class="small text-muted"><span id="xpValue">0</span> XP</div>
+                </div>
+                <div class="xp-bar mt-1">
+                  <div id="xpBarFill"></div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                  <div class="small fw-bold">Coins</div>
+                  <div class="coins-pill"><span id="coinsValue">0</span> 🪙</div>
+                </div>
+              </div>
             </div>
 
             <button class="btn btn-sm btn-outline-primary rounded-pill mt-3"
@@ -56,11 +77,17 @@
                 <button id="filterArchivedBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Archived</button>
                 <button id="filterCalendarBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Calendar</button>
                 <button id="filterStatsBtn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Stats</button>
-                <button class="btn btn-outline-success dropdown-toggle" type="button" id="tagsDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                  ☰ Tags
-                </button>
-                <ul class="dropdown-menu" id="tagsFilter">
-                </ul>
+
+                <div class="dropdown">
+                  <button class="btn btn-outline-success dropdown-toggle"
+                          type="button"
+                          id="tagsDropdownBtn"
+                          data-bs-toggle="dropdown"
+                          aria-expanded="false">
+                    ☰ Tags
+                  </button>
+                  <ul class="dropdown-menu" aria-labelledby="tagsDropdownBtn" id="tagsFilter"></ul>
+                </div>
               </div>
 
               <div id="calendarControls" class="d-none align-items-center gap-2 ms-md-2">
@@ -105,6 +132,8 @@
             </button>
           </div>
 
+          <div id="kpiRow" class="row g-3 mb-3"></div>
+
           <div id="habits-container">
             <p class="text-center text-muted mt-4">Loading...</p>
           </div>
@@ -112,56 +141,6 @@
           <template id="tplStats">
             <div class="stats-wrap">
               <h5 class="stats-title">Statistics</h5>
-
-              <div class="stats-kpis">
-                <div class="kpi-card">
-                  <div class="kpi-label">Completion</div>
-                  <div class="kpi-value" id="kpiCompletion">0%</div>
-                </div>
-                <div class="kpi-card">
-                  <div class="kpi-label">Current streak</div>
-                  <div class="kpi-value" id="kpiCurrentStreak">0</div>
-                </div>
-                <div class="kpi-card">
-                  <div class="kpi-label">Best streak</div>
-                  <div class="kpi-value" id="kpiBestStreak">0</div>
-                </div>
-                <div class="kpi-card">
-                  <div class="kpi-label">Total habits</div>
-                  <div class="kpi-value" id="kpiTotalHabits">0</div>
-                </div>
-              </div>
-
-              <div class="stats-card">
-                <h6>Daily completion %</h6>
-                <div class="stats-chart-wrap">
-                  <div class="stats-chart-box">
-                    <canvas id="statsChart"></canvas>
-                  </div>
-                </div>
-                <div class="stats-note mt-2">Based on your check-ins (completions).</div>
-              </div>
-
-              <div class="stats-card">
-                <div class="d-flex justify-content-between align-items-center">
-                  <h6 class="m-0">Calendar</h6>
-                  <div class="stats-note" id="statsCalRange">last 42 days</div>
-                </div>
-
-                <div class="stats-cal-wrap mt-2">
-                  <div class="stats-cal">
-                    <div class="stats-cal-weekdays" aria-hidden="true">
-                      <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-                    </div>
-
-                    <div class="stats-cal-grid">
-                      <div class="stats-cal-months" id="statsMonths"></div>
-                      <div class="stats-cal-cells" id="statsHeatmap"></div>
-                      <div class="stats-legend">Darker = higher completion</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </template>
         </div>
@@ -224,12 +203,28 @@
 
         <form id="createHabitForm">
           <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">Name</label>
-              <input class="form-control" id="habit-name" placeholder="Drink water" />
+            <div class="row g-2">
+              <div class="col-8">
+                <label class="form-label">Name</label>
+                <input class="form-control" id="habit-name" placeholder="Drink water" />
+              </div>
+              <div class="col-4">
+                <label class="form-label">Icon</label>
+                <select class="form-select" id="habit-icon">
+                  <option value="💧">💧 Water</option>
+                  <option value="📚">📚 Study</option>
+                  <option value="🏃‍♀️">🏃‍♀️ Run</option>
+                  <option value="😴">😴 Sleep</option>
+                  <option value="🧘">🧘 Mind</option>
+                  <option value="🥗">🥗 Food</option>
+                  <option value="🧹">🧹 Clean</option>
+                  <option value="📝">📝 Write</option>
+                  <option value="🎯">🎯 Focus</option>
+                </select>
+              </div>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-3 mt-2">
               <label class="form-label">Description</label>
               <input class="form-control" id="habit-desc" placeholder="2 liters" />
             </div>
@@ -315,23 +310,24 @@
             </div>
 
             <div class="alert alert-danger d-none mt-3" id="habit-error"></div>
-          </div>
-          <hr class="my-3">
 
-          <h6 class="fw-bold mb-2">Tags</h6>
-          <div class="d-flex flex-wrap gap-2 align-items-end mb-2">
-            <div>
-              <label class="form-label small">Tag name</label>
-              <input class="form-control form-control-sm" id="new-tag-name" placeholder="Work" />
+            <hr class="my-3">
+
+            <h6 class="fw-bold mb-2">Tags</h6>
+            <div class="d-flex flex-wrap gap-2 align-items-end mb-2">
+              <div>
+                <label class="form-label small">Tag name</label>
+                <input class="form-control form-control-sm" id="new-tag-name" placeholder="Work" />
+              </div>
+              <div>
+                <label class="form-label small">Color</label>
+                <input class="form-control form-control-color form-control-sm" id="new-tag-color" value="#22c55e" type="color" />
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" id="createTagBtn">+ Add Tag</button>
             </div>
-            <div>
-              <label class="form-label small">Color</label>
-              <input class="form-control form-control-color form-control-sm" id="new-tag-color" value="#22c55e" type="color" />
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" id="createTagBtn">+ Add Tag</button>
+            <div class="alert alert-danger d-none" id="tag-error"></div>
+            <div id="habitTags" class="d-flex flex-wrap gap-2"></div>
           </div>
-          <div class="alert alert-danger d-none" id="tag-error"></div>
-          <div id="habitTags" class="d-flex flex-wrap gap-2"></div>
 
           <div class="modal-footer">
             <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
@@ -339,6 +335,69 @@
           </div>
         </form>
 
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="shopModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-4">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Shop</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="shop-balance mb-3">
+            <div class="small text-muted">Your coins</div>
+            <div class="fw-bold"><span id="shopCoins">0</span> 🪙</div>
+          </div>
+
+          <div class="shop-grid">
+            <button class="shop-item" data-shop="theme" data-value="#6c63ff" data-cost="0">
+              <div class="shop-swatch" style="background:#6c63ff"></div>
+              <div class="shop-name">Default</div>
+              <div class="shop-cost">Free</div>
+            </button>
+
+            <button class="shop-item" data-shop="theme" data-value="#22c55e" data-cost="15">
+              <div class="shop-swatch" style="background:#22c55e"></div>
+              <div class="shop-name">Emerald</div>
+              <div class="shop-cost">15 🪙</div>
+            </button>
+
+            <button class="shop-item" data-shop="theme" data-value="#f59e0b" data-cost="15">
+              <div class="shop-swatch" style="background:#f59e0b"></div>
+              <div class="shop-name">Amber</div>
+              <div class="shop-cost">15 🪙</div>
+            </button>
+
+            <button class="shop-item" data-shop="theme" data-value="#ef4444" data-cost="20">
+              <div class="shop-swatch" style="background:#ef4444"></div>
+              <div class="shop-name">Ruby</div>
+              <div class="shop-cost">20 🪙</div>
+            </button>
+
+            <button class="shop-item" data-shop="theme" data-value="#0ea5e9" data-cost="20">
+              <div class="shop-swatch" style="background:#0ea5e9"></div>
+              <div class="shop-name">Sky</div>
+              <div class="shop-cost">20 🪙</div>
+            </button>
+
+            <button class="shop-item" data-shop="theme" data-value="#111827" data-cost="25">
+              <div class="shop-swatch" style="background:#111827"></div>
+              <div class="shop-name">Midnight</div>
+              <div class="shop-cost">25 🪙</div>
+            </button>
+          </div>
+
+          <div class="alert alert-danger d-none mt-3" id="shopError"></div>
+          <div class="alert alert-success d-none mt-3" id="shopOk">Purchased!</div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-light rounded-pill" data-bs-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   </div>

@@ -1,12 +1,16 @@
 console.log("dashboard.js is running");
 
-let CURRENT_FILTER = "active";            
-let CURRENT_VIEW = "list";               
+let CURRENT_FILTER = "active";
+let CURRENT_VIEW = "list";
 let CAL_DAYS = 7;
 let CAL_ANCHOR = isoToday();
 let STATS_CHART = null;
+
 let TAGS = [];
 let CURRENT_TAG = null;
+
+let CURRENT_USER = null;
+let TODAY_DONE_MAP = new Map();
 
 document.addEventListener("DOMContentLoaded", () => {
   const token = localStorage.getItem("token");
@@ -21,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupCreateHabit();
   setupHabitActions();
   setupHabitsTabs();
+  setupShop();
 
   init();
 });
@@ -29,20 +34,26 @@ async function init() {
   try {
     const meResp = await apiRequest("/api/users/me");
     const user = meResp.user || meResp;
+    CURRENT_USER = user;
+
     renderProfile(user);
 
     document.getElementById("edit-username").value = user.username || "";
     document.getElementById("edit-email").value = user.email || "";
     document.getElementById("edit-timezone").value = user.timezone || "UTC";
+
+    applySavedTheme();
+    ensureGamificationState();
+    renderGamificationUI();
   } catch (e) {
     console.error("Profile load error:", e);
     localStorage.clear();
     window.location.href = "/auth.html";
     return;
   }
+
   await loadTags();
   await refreshHabits();
-
 }
 
 function isoToday() {
@@ -56,13 +67,332 @@ function addDaysISO(iso, delta) {
   return d.toISOString().slice(0, 10);
 }
 
+function clampInt(n, min, max) {
+  return Math.max(min, Math.min(max, isNaN(n) ? min : n));
+}
+
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, (m) => {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m];
+  });
+}
+
+function normalizeHabitsArray(data) {
+  return Array.isArray(data) ? data : data.habits || data.items || [];
+}
+
+function animateNumber(el, to, options = {}) {
+  if (!el) return;
+
+  const { duration = 900, suffix = "", from = 0, easing = "easeOut" } = options;
+
+  const start = Number.isFinite(from) ? from : 0;
+  const target = Number.isFinite(to) ? to : 0;
+  const startTime = performance.now();
+
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function tick(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const eased = easing === "easeOut" ? easeOutCubic(progress) : progress;
+    const value = Math.round(start + (target - start) * eased);
+    el.textContent = String(value) + suffix;
+
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+
+  requestAnimationFrame(tick);
+}
+
+function userKey() {
+  const id = CURRENT_USER?._id || CURRENT_USER?.id || "anon";
+  return `ht:${id}`;
+}
+
+function ensureGamificationState() {
+  const key = userKey() + ":game";
+  const raw = localStorage.getItem(key);
+  if (raw) return;
+  const state = { xp: 0, coins: 0, theme: null, purchases: {} };
+  localStorage.setItem(key, JSON.stringify(state));
+}
+
+function loadGame() {
+  ensureGamificationState();
+  const key = userKey() + ":game";
+  try {
+    return JSON.parse(localStorage.getItem(key) || "{}");
+  } catch {
+    return { xp: 0, coins: 0, theme: null, purchases: {} };
+  }
+}
+
+function saveGame(next) {
+  const key = userKey() + ":game";
+  localStorage.setItem(key, JSON.stringify(next));
+}
+
+function levelFromXp(xp) {
+  const thresholds = [
+    { name: "Beginner", min: 0 },
+    { name: "Consistent", min: 250 },
+    { name: "Pro", min: 650 },
+    { name: "Elite", min: 1200 },
+  ];
+  let cur = thresholds[0];
+  for (const t of thresholds) if (xp >= t.min) cur = t;
+  const next = thresholds.find((t) => t.min > cur.min) || null;
+  const curMin = cur.min;
+  const nextMin = next ? next.min : curMin + 400;
+  const span = Math.max(1, nextMin - curMin);
+  const progress = Math.min(1, Math.max(0, (xp - curMin) / span));
+  return { level: cur.name, progress, nextAt: nextMin };
+}
+
+function renderGamificationUI() {
+  const g = loadGame();
+  const lv = levelFromXp(g.xp || 0);
+
+  const xpValue = document.getElementById("xpValue");
+  const coinsValue = document.getElementById("coinsValue");
+  const xpBarFill = document.getElementById("xpBarFill");
+  const userStatus = document.getElementById("user-status");
+  const navLevelPill = document.getElementById("navLevelPill");
+  const shopCoins = document.getElementById("shopCoins");
+
+  if (xpValue) xpValue.textContent = String(g.xp || 0);
+  if (coinsValue) coinsValue.textContent = String(g.coins || 0);
+  if (shopCoins) shopCoins.textContent = String(g.coins || 0);
+
+  if (xpBarFill) xpBarFill.style.width = `${Math.round(lv.progress * 100)}%`;
+  if (userStatus) userStatus.textContent = lv.level;
+  if (navLevelPill) navLevelPill.textContent = lv.level;
+}
+
+function addReward({ xp = 0, coins = 0 } = {}) {
+  const g = loadGame();
+  g.xp = Math.max(0, (g.xp || 0) + xp);
+  g.coins = Math.max(0, (g.coins || 0) + coins);
+  saveGame(g);
+  renderGamificationUI();
+}
+
+function setThemeColor(color) {
+  document.documentElement.style.setProperty("--accent", color);
+  const g = loadGame();
+  g.theme = color;
+  saveGame(g);
+  renderGamificationUI();
+}
+
+function applySavedTheme() {
+  const g = loadGame();
+  if (g.theme) document.documentElement.style.setProperty("--accent", g.theme);
+}
+
+function getIconMap() {
+  const key = userKey() + ":icons";
+  try {
+    return JSON.parse(localStorage.getItem(key) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function setHabitIcon(habitId, icon) {
+  const key = userKey() + ":icons";
+  const map = getIconMap();
+  map[habitId] = icon;
+  localStorage.setItem(key, JSON.stringify(map));
+}
+
+function iconForHabit(h) {
+  const map = getIconMap();
+  const id = h?._id || h?.id;
+  if (id && map[id]) return map[id];
+
+  const name = String(h?.name || "").toLowerCase();
+  const desc = String(h?.description || "").toLowerCase();
+  const txt = name + " " + desc;
+
+  if (/(water|drink|cup|литр|су)/i.test(txt)) return "💧";
+  if (/(study|read|book|learn|оқу|уч)/i.test(txt)) return "📚";
+  if (/(run|gym|workout|спорт|жүгір)/i.test(txt)) return "🏃‍♀️";
+  if (/(sleep|bed|ұйқы|сон)/i.test(txt)) return "😴";
+  if (/(medit|yoga|breath|тыныс|медит)/i.test(txt)) return "🧘";
+  if (/(food|eat|diet|meal|тамақ|еда)/i.test(txt)) return "🥗";
+  if (/(clean|room|wash|убор|таза)/i.test(txt)) return "🧹";
+  if (/(write|journal|note|күнделік|письм)/i.test(txt)) return "📝";
+  return "🎯";
+}
+
+function isDueToday(h) {
+  const freq = (h?.frequency || "").toLowerCase();
+  const today = new Date();
+  const dow = today.getDay();
+  if (freq === "daily") return true;
+
+  const schedule = h?.schedule?.daysOfWeek;
+  if (Array.isArray(schedule) && schedule.length) return schedule.includes(dow);
+
+  if (freq === "weekly") {
+    const sd = h?.startDate ? new Date(String(h.startDate).slice(0, 10) + "T12:00:00") : null;
+    if (sd && !isNaN(sd.getTime())) return sd.getDay() === dow;
+    return dow === 1;
+  }
+
+  if (freq === "custom") {
+    if (Array.isArray(schedule) && schedule.length) return schedule.includes(dow);
+    return false;
+  }
+
+  return false;
+}
+
+function getTodayDone(h) {
+  const id = String(h?._id || "");
+  if (!id) return false;
+  return TODAY_DONE_MAP.get(id) === true;
+}
+
+async function refreshTodayDoneMap() {
+  TODAY_DONE_MAP = new Map();
+  try {
+    const today = isoToday();
+    const data = await apiRequest(`/api/habits/daily?date=${encodeURIComponent(today)}&days=1`);
+    const habits = Array.isArray(data?.habits) ? data.habits : [];
+    for (const hh of habits) {
+      const habitId = String(hh?.habitId || "");
+      const cell = Array.isArray(hh?.cells) ? hh.cells[0] : null;
+      const done = !!cell?.completed;
+      if (habitId) TODAY_DONE_MAP.set(habitId, done);
+    }
+  } catch {
+    TODAY_DONE_MAP = new Map();
+  }
+}
+
+function hideKpis() {
+  const row = document.getElementById("kpiRow");
+  if (row) row.innerHTML = "";
+}
+
+async function loadAndRenderKpis() {
+  if (CURRENT_VIEW !== "list") {
+    hideKpis();
+    return;
+  }
+
+  const row = document.getElementById("kpiRow");
+  if (!row) return;
+
+  row.innerHTML = `
+    <div class="col-12">
+      <div class="text-muted small">Loading dashboard...</div>
+    </div>
+  `;
+
+  try {
+    const stats = await apiRequest("/api/stats/overview?days=7");
+    const overview = stats.overview || stats || {};
+    renderKpisFromOverview(overview);
+  } catch (e) {
+    hideKpis();
+    console.warn("KPI load failed:", e.message);
+  }
+}
+
+function renderKpisFromOverview(overview) {
+  const el = document.getElementById("kpiRow");
+  if (!el) return;
+
+  const totalHabits = overview.totalHabits ?? 0;
+  const completionRate = overview.completionRate ?? 0;
+  const bestStreak = overview.bestStreak ?? 0;
+  const currentStreak = overview.currentStreak ?? 0;
+
+  const weeklyPct = Math.round((completionRate || 0) * 100);
+
+  let todayPct = 0;
+  if (Array.isArray(overview.byDay) && overview.byDay.length) {
+    const last = overview.byDay[overview.byDay.length - 1];
+    todayPct = last.total ? Math.round((last.done / last.total) * 100) : 0;
+  }
+
+  el.innerHTML = `
+    <div class="col-6 col-lg-3">
+      <div class="kpi-card2">
+        <div class="kpi-top">
+          <span class="kpi-label2">Today progress</span>
+          <span class="kpi-chip" id="kpiTodayChip">0%</span>
+        </div>
+        <div class="kpi-value2" id="kpiTodayValue">0%</div>
+        <div class="kpi-sub2">Today</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="kpi-card2">
+        <div class="kpi-top">
+          <span class="kpi-label2">Current streak</span>
+          <span class="kpi-chip">🔥</span>
+        </div>
+        <div class="kpi-value2" id="kpiCurrentStreak">0</div>
+        <div class="kpi-sub2">days</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="kpi-card2">
+        <div class="kpi-top">
+          <span class="kpi-label2">Best streak</span>
+          <span class="kpi-chip">🏆</span>
+        </div>
+        <div class="kpi-value2" id="kpiBestStreak">0</div>
+        <div class="kpi-sub2">days</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="kpi-card2">
+        <div class="kpi-top">
+          <span class="kpi-label2">Weekly completion</span>
+          <span class="kpi-chip" id="kpiHabitsChip">${totalHabits} habits</span>
+        </div>
+        <div class="kpi-value2" id="kpiWeeklyValue">0%</div>
+        <div class="kpi-sub2">last 7 days</div>
+      </div>
+    </div>
+  `;
+
+  animateNumber(document.getElementById("kpiTodayValue"), todayPct, { suffix: "%", duration: 900 });
+  animateNumber(document.getElementById("kpiTodayChip"), todayPct, { suffix: "%", duration: 650 });
+  animateNumber(document.getElementById("kpiCurrentStreak"), currentStreak, { duration: 750 });
+  animateNumber(document.getElementById("kpiBestStreak"), bestStreak, { duration: 750 });
+  animateNumber(document.getElementById("kpiWeeklyValue"), weeklyPct, { suffix: "%", duration: 900 });
+}
+
+async function refreshHabits() {
+  await loadAndRenderKpis();
+  if (CURRENT_VIEW === "list") await refreshTodayDoneMap();
+
+  if (CURRENT_VIEW === "calendar") await renderCalendarView();
+  else if (CURRENT_VIEW === "stats") await renderStatsView();
+  else await renderListView();
+}
+
 function setupHabitsTabs() {
   const activeBtn = document.getElementById("filterActiveBtn");
   const archivedBtn = document.getElementById("filterArchivedBtn");
   const calendarBtn = document.getElementById("filterCalendarBtn");
-  const statsBtn = document.getElementById("filterStatsBtn"); 
+  const statsBtn = document.getElementById("filterStatsBtn");
+
   const addHabitBtn = document.getElementById("addHabitBtn");
+
   const calendarControls = document.getElementById("calendarControls");
+  const statsControls = document.getElementById("statsControls");
 
   const calPrevBtn = document.getElementById("calPrevBtn");
   const calNextBtn = document.getElementById("calNextBtn");
@@ -71,44 +401,41 @@ function setupHabitsTabs() {
   const calDaysCustomWrap = document.getElementById("calDaysCustomWrap");
   const calDaysCustom = document.getElementById("calDaysCustom");
 
-  function setBtnInactive(btn) {
-    if (!btn) return;
-    btn.classList.remove("btn-secondary");
-    btn.classList.add("btn-outline-secondary");
-  }
-
-  function setBtnActive(btn) {
-    if (!btn) return;
-    btn.classList.remove("btn-outline-secondary");
-    btn.classList.add("btn-secondary");
-  }
-
   function paintTabs() {
-  [activeBtn, archivedBtn, calendarBtn, statsBtn].forEach(b => {
-    if (!b) return;
-    b.classList.replace("btn-secondary", "btn-outline-secondary");
-  });
+    [activeBtn, archivedBtn, calendarBtn, statsBtn].forEach((b) => {
+      if (!b) return;
+      b.classList.remove("btn-secondary");
+      b.classList.add("btn-outline-secondary");
+    });
 
-  if (CURRENT_VIEW === "calendar") {
-    calendarBtn?.classList.replace("btn-outline-secondary", "btn-secondary");
-  } else if (CURRENT_VIEW === "stats") {
-    statsBtn?.classList.replace("btn-outline-secondary", "btn-secondary");
-  } else {
-    const target = (CURRENT_FILTER === "active") ? activeBtn : archivedBtn;
-    target?.classList.replace("btn-outline-secondary", "btn-secondary");
-  }
+    if (CURRENT_VIEW === "calendar") {
+      calendarBtn?.classList.remove("btn-outline-secondary");
+      calendarBtn?.classList.add("btn-secondary");
+    } else if (CURRENT_VIEW === "stats") {
+      statsBtn?.classList.remove("btn-outline-secondary");
+      statsBtn?.classList.add("btn-secondary");
+    } else {
+      const target = CURRENT_FILTER === "active" ? activeBtn : archivedBtn;
+      target?.classList.remove("btn-outline-secondary");
+      target?.classList.add("btn-secondary");
+    }
 
-  const isAddingAllowed = (CURRENT_VIEW === "list" && CURRENT_FILTER === "active");
-  if (addHabitBtn) {
-    addHabitBtn.disabled = !isAddingAllowed;
-    addHabitBtn.classList.toggle("disabled", !isAddingAllowed);
-  }
+    const isAddingAllowed = CURRENT_VIEW === "list" && CURRENT_FILTER === "active";
+    if (addHabitBtn) {
+      addHabitBtn.disabled = !isAddingAllowed;
+      addHabitBtn.classList.toggle("disabled", !isAddingAllowed);
+    }
 
-  if (calendarControls) {
-    calendarControls.classList.toggle("d-none", CURRENT_VIEW !== "calendar");
-    calendarControls.classList.toggle("d-flex", CURRENT_VIEW === "calendar");
+    if (calendarControls) {
+      calendarControls.classList.toggle("d-none", CURRENT_VIEW !== "calendar");
+      calendarControls.classList.toggle("d-flex", CURRENT_VIEW === "calendar");
+    }
+
+    if (statsControls) {
+      statsControls.classList.toggle("d-none", CURRENT_VIEW !== "stats");
+      statsControls.classList.toggle("d-flex", CURRENT_VIEW === "stats");
+    }
   }
-}
 
   activeBtn?.addEventListener("click", async () => {
     CURRENT_VIEW = "list";
@@ -155,11 +482,11 @@ function setupHabitsTabs() {
 
   calDaysSelect?.addEventListener("change", async () => {
     if (calDaysSelect.value === "custom") {
-      if (calDaysCustomWrap) calDaysCustomWrap.classList.remove("d-none");
+      calDaysCustomWrap?.classList.remove("d-none");
       const raw = parseInt(calDaysCustom?.value || "7", 10);
       CAL_DAYS = clampInt(raw, 1, 30);
     } else {
-      if (calDaysCustomWrap) calDaysCustomWrap.classList.add("d-none");
+      calDaysCustomWrap?.classList.add("d-none");
       CAL_DAYS = clampInt(parseInt(calDaysSelect.value, 10), 1, 30);
     }
     await refreshHabits();
@@ -192,6 +519,9 @@ function setupHabitActions() {
         else if (action === "unarchive") await apiRequest(`/api/habits/${id}/unarchive`, { method: "POST" });
         else if (action === "delete") {
           if (confirm("Delete this habit?")) await apiRequest(`/api/habits/${id}`, { method: "DELETE" });
+        } else if (action === "pickIcon") {
+          const icon = btn.dataset.icon || "🎯";
+          setHabitIcon(id, icon);
         }
 
         await refreshHabits();
@@ -214,11 +544,13 @@ function setupHabitActions() {
       try {
         if (done) {
           await apiRequest(`/api/habits/${habitId}/checkins/${date}`, { method: "DELETE" });
+          addReward({ xp: -10, coins: -1 });
         } else {
           await apiRequest(`/api/habits/${habitId}/checkins/${date}`, {
             method: "PUT",
             body: { value: 1, note: "" },
           });
+          addReward({ xp: 10, coins: 1 });
         }
         await refreshHabits();
       } catch (err) {
@@ -228,22 +560,12 @@ function setupHabitActions() {
   });
 }
 
-async function refreshHabits() {
-  if (CURRENT_VIEW === "calendar") await renderCalendarView();
-  else if (CURRENT_VIEW === "stats") await renderStatsView();
-  else await renderListView();
-}
-
 async function renderListView() {
   const box = document.getElementById("habits-container");
   box.innerHTML = `<p class="text-center text-muted mt-4">Loading...</p>`;
 
-  const tagQuery = CURRENT_TAG ? `&tag=${CURRENT_TAG}` : "";
-  const data = await apiRequest(
-    `/api/habits?status=${CURRENT_FILTER}${tagQuery}&limit=50`
-  );
-
-
+  const tagQuery = CURRENT_TAG ? `&tag=${encodeURIComponent(CURRENT_TAG)}` : "";
+  const data = await apiRequest(`/api/habits?status=${CURRENT_FILTER}${tagQuery}&limit=50`);
   const habits = normalizeHabitsArray(data);
 
   document.getElementById("habits-count").textContent = habits.length;
@@ -254,28 +576,84 @@ async function renderListView() {
   }
 
   box.innerHTML = habits.map(renderHabitCard).join("");
+
+  document.querySelectorAll(".habit-progress > div").forEach((bar) => {
+    const pct = clampInt(parseInt(bar.dataset.pct || "0", 10), 0, 100);
+    requestAnimationFrame(() => (bar.style.width = pct + "%"));
+  });
 }
 
 function renderHabitCard(h) {
-  const goalText = h.goal?.unit ? `${h.goal.target} ${h.goal.unit}` : `${h.goal?.target || 1}`;
   const isArchived = h.status === "archived";
+  const due = isDueToday(h);
+  const doneToday = getTodayDone(h);
+  const icon = iconForHabit(h);
+
+  const target = clampInt(parseInt(h?.goal?.target || "1", 10), 1, 1000000);
+  const unit = String(h?.goal?.unit || "").trim();
+  const doneCount = doneToday ? 1 : 0;
+  const pct = Math.round((Math.min(target, doneCount) / target) * 100);
+
+  const statusPill = doneToday
+    ? `<span class="due-pill due-done">Done today</span>`
+    : due
+      ? `<span class="due-pill due-yes">Due today</span>`
+      : `<span class="due-pill due-no">Not scheduled</span>`;
+
+  const goalText = unit ? `${doneCount}/${target} ${escapeHtml(unit)}` : `${doneCount}/${target}`;
+
+  const picker = `
+    <div class="dropdown icon-dd">
+      <button class="btn btn-sm btn-light border rounded-pill px-2" data-bs-toggle="dropdown" aria-expanded="false" title="Icon">😊</button>
+      <ul class="dropdown-menu">
+        ${["💧","📚","🏃‍♀️","😴","🧘","🥗","🧹","📝","🎯"].map((ic) => `
+          <li>
+            <button class="dropdown-item" data-action="pickIcon" data-id="${h._id}" data-icon="${ic}">${ic}</button>
+          </li>
+        `).join("")}
+      </ul>
+    </div>
+  `;
 
   return `
-    <div class="habit-card" style="border-left: 5px solid ${h.color || "#6c63ff"}">
-      <div class="habit-main">
-        <p class="habit-title">${escapeHtml(h.name)}</p>
-        <p class="habit-sub">${escapeHtml(h.description || "")}</p>
-        <div class="habit-meta-row">
-          <span class="meta-badge">${h.frequency}</span>
-          <span class="meta-sep">|</span>
-          <span class="meta-item"><span class="meta-label">Goal:</span> ${goalText}</span>
+    <div class="habit-card" style="border-left: 7px solid ${h.color || "var(--accent)"}">
+      <div class="habit-left">
+        <div class="habit-icon" style="background: rgba(0,0,0,0.03)">${icon}</div>
+        <div class="habit-main">
+          <div class="d-flex align-items-start justify-content-between gap-2">
+            <div>
+              <p class="habit-title">${escapeHtml(h.name)}</p>
+              <p class="habit-sub">${escapeHtml(h.description || "")}</p>
+            </div>
+            ${picker}
+          </div>
+
+          <div class="habit-mini">
+            <span class="badge-soft">${escapeHtml(h.frequency || "")}</span>
+            ${statusPill}
+          </div>
+
+          <div class="habit-progress-wrap">
+            <div class="habit-progress-top">
+              <span>Progress</span>
+              <span>${goalText}</span>
+            </div>
+            <div class="habit-progress">
+              <div data-pct="${pct}" style="background:${h.color || "var(--accent)"}"></div>
+            </div>
+          </div>
         </div>
       </div>
+
       <div class="habit-actions">
-        <button data-action="${isArchived ? "unarchive" : "archive"}" data-id="${h._id}" class="btn btn-sm btn-outline-secondary rounded-pill">
+        <button data-action="${isArchived ? "unarchive" : "archive"}" data-id="${h._id}"
+                class="btn btn-sm btn-outline-secondary rounded-pill">
           ${isArchived ? "Unarchive" : "Archive"}
         </button>
-        <button data-action="delete" data-id="${h._id}" class="btn btn-sm btn-outline-danger rounded-pill">Delete</button>
+        <button data-action="delete" data-id="${h._id}"
+                class="btn btn-sm btn-outline-danger rounded-pill">
+          Delete
+        </button>
       </div>
     </div>`;
 }
@@ -284,8 +662,9 @@ async function renderCalendarView() {
   const box = document.getElementById("habits-container");
   box.innerHTML = `<p class="text-center text-muted mt-4">Loading calendar...</p>`;
 
+  const tagQuery = CURRENT_TAG ? `&tag=${encodeURIComponent(CURRENT_TAG)}` : "";
   const data = await apiRequest(
-    `/api/habits/daily?date=${encodeURIComponent(CAL_ANCHOR)}&days=${CAL_DAYS}${CURRENT_TAG ? `&tag=${CURRENT_TAG}` : ""}`
+    `/api/habits/daily?date=${encodeURIComponent(CAL_ANCHOR)}&days=${CAL_DAYS}${tagQuery}`
   );
 
   const dates = data.dates || [];
@@ -315,14 +694,12 @@ async function renderCalendarView() {
         .map((c) => {
           const isDone = !!c.completed;
           const isTarget = c.isTargetDay !== false;
-          const color = isDone ? h.color || "#6c63ff" : "";
+          const color = isDone ? h.color || "var(--accent)" : "";
 
           return `
             <button type="button"
               class="cal-cell ${isDone ? "is-done" : ""}"
-              style="${color ? `background:${color};border-color:${color};` : ""} opacity: ${
-            isTarget ? 1 : 0.2
-          }"
+              style="${color ? `background:${color};border-color:${color};` : ""} opacity:${isTarget ? 1 : 0.2}"
               data-cal-cell="1"
               data-habit-id="${h.habitId}"
               data-date="${c.date}"
@@ -337,7 +714,7 @@ async function renderCalendarView() {
         <div class="cal-row">
           <div class="cal-name">
             <div class="fw-bold text-truncate" title="${escapeHtml(h.name)}">${escapeHtml(h.name)}</div>
-            <div class="text-muted" style="font-size:0.7rem">${h.frequency}</div>
+            <div class="text-muted" style="font-size:0.7rem">${escapeHtml(h.frequency || "")}</div>
           </div>
           <div class="cal-grid" style="grid-template-columns: repeat(${dates.length}, 1fr)">
             ${cells}
@@ -363,124 +740,340 @@ async function renderStatsView() {
   const box = document.getElementById("habits-container");
   box.innerHTML = `<p class="text-center text-muted mt-4">Loading stats...</p>`;
 
+  let resp;
   try {
-    const days = 7;
-    const data = await apiRequest(`/api/stats/overview?days=${days}`);
-
-    const overview = data.overview || data;
-    const totalHabits = overview.totalHabits ?? 0;
-    const totalCheckins = overview.totalCheckins ?? 0;
-    const completionRate = overview.completionRate ?? 0; 
-    const bestStreak = overview.bestStreak ?? 0;
-    const currentStreak = overview.currentStreak ?? 0;
-
-    const ratePct =
-      completionRate > 1 ? Math.round(completionRate) : Math.round(completionRate * 100);
-
-    box.innerHTML = `
-      <div class="p-3">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-          <h4 class="m-0">Statistics</h4>
-        </div>
-
-        <div class="row g-3">
-          <div class="col-12 col-md-4">
-            <div class="p-3 bg-white rounded-4 shadow-sm">
-              <div class="text-muted small">Habits</div>
-              <div class="fs-3 fw-bold">${totalHabits}</div>
-            </div>
-          </div>
-
-          <div class="col-12 col-md-4">
-            <div class="p-3 bg-white rounded-4 shadow-sm">
-              <div class="text-muted small">Check-ins</div>
-              <div class="fs-3 fw-bold">${totalCheckins}</div>
-            </div>
-          </div>
-
-          <div class="col-12 col-md-4">
-            <div class="p-3 bg-white rounded-4 shadow-sm">
-              <div class="text-muted small">Completion</div>
-              <div class="fs-3 fw-bold">${ratePct}%</div>
-            </div>
-          </div>
-
-          <div class="col-12 col-md-6">
-            <div class="p-3 bg-white rounded-4 shadow-sm">
-              <div class="text-muted small">Current streak</div>
-              <div class="fs-3 fw-bold">${currentStreak}</div>
-            </div>
-          </div>
-
-          <div class="col-12 col-md-6">
-            <div class="p-3 bg-white rounded-4 shadow-sm">
-              <div class="text-muted small">Best streak</div>
-              <div class="fs-3 fw-bold">${bestStreak}</div>
-            </div>
-          </div>
-        </div>
-
-        ${
-          Array.isArray(overview.byDay)
-            ? renderByDayBars(overview.byDay)
-            : `<div class="text-muted small mt-3">
-                Tip: add <code>overview.byDay</code> from backend to show a chart.
-              </div>`
-        }
-      </div>
-    `;
+    resp = await apiRequest(`/api/stats/overview?days=365`);
   } catch (e) {
-    console.error("Stats load error:", e);
     box.innerHTML = `
-      <div class="p-3">
-        <h4>Statistics</h4>
-        <div class="alert alert-warning mt-3">
-          Stats endpoint is not ready or returned error: <b>${escapeHtml(e.message)}</b><br/>
-          Create backend route: <code>GET /api/stats/overview?days=7</code>
-        </div>
+      <div class="alert alert-warning">
+        Stats error: <b>${escapeHtml(e.message)}</b><br/>
+        Expected: <code>GET /api/stats/overview?days=365</code>
       </div>`;
+    return;
   }
-}
 
-function renderByDayBars(byDay) {
-  const max = Math.max(
-    1,
-    ...byDay.map((d) => (d.total ? (d.done / d.total) * 100 : 0))
-  );
+  const ov = resp?.overview || resp || {};
+  const byDayRaw = Array.isArray(ov.byDay) ? ov.byDay : [];
+  const byDay = byDayRaw.map((d) => ({
+    ...d,
+    date: (d.date || "").slice(0, 10),
+    rate: d.total && d.total > 0 ? d.done / d.total : 0,
+  }));
 
-  const bars = byDay
-    .map((d) => {
-      const pct = d.total ? Math.round((d.done / d.total) * 100) : 0;
-      const w = Math.round((pct / max) * 100);
-      return `
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <div class="text-muted small" style="width:90px">${escapeHtml(d.date)}</div>
-          <div class="flex-grow-1 bg-light rounded-pill" style="height:10px;overflow:hidden;">
-            <div style="width:${w}%;height:10px;background:#6c63ff;"></div>
+  const completionPercent = Math.round((ov.completionRate || 0) * 100);
+
+  box.innerHTML = `
+    <div class="p-2">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h4 class="fw-bold m-0">Statistics</h4>
+        <div class="text-muted small">Based on your check-ins (completions)</div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3">
+          <div class="bg-white rounded-4 shadow-sm p-3 stat-card">
+            <div class="stat-title">Completion</div>
+            <div class="stat-value">${completionPercent}%</div>
+            <div class="stat-sub">overall</div>
           </div>
-          <div class="text-muted small" style="width:44px;text-align:right">${pct}%</div>
         </div>
-      `;
-    })
-    .join("");
+        <div class="col-6 col-lg-3">
+          <div class="bg-white rounded-4 shadow-sm p-3 stat-card">
+            <div class="stat-title">Current streak</div>
+            <div class="stat-value">${ov.currentStreak ?? 0}</div>
+            <div class="stat-sub">days</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="bg-white rounded-4 shadow-sm p-3 stat-card">
+            <div class="stat-title">Best streak</div>
+            <div class="stat-value">${ov.bestStreak ?? 0}</div>
+            <div class="stat-sub">days</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="bg-white rounded-4 shadow-sm p-3 stat-card">
+            <div class="stat-title">Total habits</div>
+            <div class="stat-value">${ov.totalHabits ?? 0}</div>
+            <div class="stat-sub">tracked</div>
+          </div>
+        </div>
+      </div>
 
-  return `
-    <div class="mt-4">
-      <div class="fw-semibold mb-2">Daily completion</div>
+      <div class="bg-white rounded-4 shadow-sm p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+          <div class="fw-semibold" id="statsChartTitle">Daily completion %</div>
+
+          <select id="statsRange" class="form-select form-select-sm" style="width:auto">
+            <option value="daily" selected>Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+
+        <canvas id="statsChart" height="120"></canvas>
+      </div>
+
       <div class="bg-white rounded-4 shadow-sm p-3">
-        ${bars}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-semibold">Calendar</div>
+        </div>
+
+        <div id="heatmapWrap"></div>
+
+        <div class="text-muted small mt-2">
+          Darker = higher completion
+        </div>
       </div>
     </div>
   `;
+
+  const select = document.getElementById("statsRange");
+  select?.addEventListener("change", () => renderRange(select.value));
+
+  renderRange("daily");
+
+  function aggregateByWeek(arr) {
+    function getISOWeekKey(dateStr) {
+      const d = new Date(dateStr + "T12:00:00");
+      const day = (d.getDay() + 6) % 7;
+      d.setDate(d.getDate() - day + 3);
+      const firstThu = new Date(d.getFullYear(), 0, 4);
+      const firstDay = (firstThu.getDay() + 6) % 7;
+      firstThu.setDate(firstThu.getDate() - firstDay + 3);
+      const week = 1 + Math.round((d - firstThu) / (7 * 24 * 3600 * 1000));
+      const year = d.getFullYear();
+      return `${year}-W${String(week).padStart(2, "0")}`;
+    }
+
+    const map = new Map();
+    for (const x of arr) {
+      if (!x?.date) continue;
+      const key = getISOWeekKey(x.date.slice(0, 10));
+      const cur = map.get(key) || { key, done: 0, total: 0 };
+      cur.done += x.done || 0;
+      cur.total += x.total || 0;
+      map.set(key, cur);
+    }
+
+    return Array.from(map.values())
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .map((w) => ({
+        date: w.key,
+        done: w.done,
+        total: w.total,
+        rate: w.total ? w.done / w.total : 0,
+      }));
+  }
+
+  function aggregateByMonth(arr) {
+    const map = new Map();
+    for (const d of arr) {
+      const key = (d.date || "").slice(0, 7);
+      if (!key) continue;
+      const cur = map.get(key) || { key, done: 0, total: 0 };
+      cur.done += d.done || 0;
+      cur.total += d.total || 0;
+      map.set(key, cur);
+    }
+    return Array.from(map.values())
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .map((m) => ({
+        date: m.key,
+        done: m.done,
+        total: m.total,
+        rate: m.total ? m.done / m.total : 0,
+      }));
+  }
+
+  function renderRange(range) {
+    const title = document.getElementById("statsChartTitle");
+    const START_DATE = "2026-01-01";
+    const dailyFrom2026 = byDay.filter((d) => d.date >= START_DATE);
+
+    if (range === "daily") {
+      title && (title.textContent = "Daily completion %");
+      renderStatsChart(dailyFrom2026);
+      renderHeatmapYear(2026, byDay);
+      return;
+    }
+
+    if (range === "weekly") {
+      title && (title.textContent = "Weekly completion %");
+      renderStatsChart(aggregateByWeek(dailyFrom2026));
+      renderHeatmapYear(2026, byDay);
+      return;
+    }
+
+    if (range === "monthly") {
+      title && (title.textContent = "Monthly completion %");
+      renderStatsChart(aggregateByMonth(dailyFrom2026));
+      renderHeatmapYear(2026, byDay);
+      return;
+    }
+  }
+}
+
+function renderStatsChart(byDay) {
+  const canvas = document.getElementById("statsChart");
+  if (!canvas || typeof Chart === "undefined") return;
+
+  const labels = byDay.map((x) => (x.date || "").slice(5));
+  const rates = byDay.map((x) => Math.round((x.rate || 0) * 100));
+
+  if (STATS_CHART) STATS_CHART.destroy();
+
+  STATS_CHART = new Chart(canvas, {
+    type: "bar",
+    data: { labels, datasets: [{ label: "Completion %", data: rates }] },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: true } },
+      scales: { y: { beginAtZero: true, max: 100 } },
+    },
+  });
+}
+
+function isoDateLocal(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  const y = x.getFullYear();
+  const m = String(x.getMonth() + 1).padStart(2, "0");
+  const day = String(x.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function startOfWeekMonday(d) {
+  const x = new Date(d);
+  const jsDay = x.getDay();
+  const diff = (jsDay + 6) % 7;
+  x.setDate(x.getDate() - diff);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function addDays(d, n) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+
+function colorForRate(rate) {
+  const base = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#6c63ff";
+  if (rate >= 0.75) return base;
+  if (rate >= 0.5) return "rgba(108,99,255,.72)";
+  if (rate >= 0.25) return "rgba(108,99,255,.35)";
+  if (rate > 0) return "rgba(108,99,255,.16)";
+  return "#f3f4f6";
+}
+
+function renderHeatmapYear(year, byDay) {
+  const wrap = document.getElementById("heatmapWrap");
+  if (!wrap) return;
+
+  const map = new Map();
+  (byDay || []).forEach((x) => {
+    if (!x?.date) return;
+    const date = x.date.slice(0, 10);
+    const rate = x.total ? x.done / x.total : 0;
+    map.set(date, { rate, done: x.done || 0, total: x.total || 0 });
+  });
+
+  const yearStart = new Date(`${year}-01-01T00:00:00`);
+  const yearEnd = new Date(`${year}-12-31T00:00:00`);
+  const gridStart = startOfWeekMonday(yearStart);
+  const gridEnd = addDays(startOfWeekMonday(addDays(yearEnd, 6)), 6);
+
+  const weeks = [];
+  for (let d = new Date(gridStart); d <= gridEnd; d = addDays(d, 7)) {
+    weeks.push(new Date(d));
+  }
+
+  const monthStarts = [];
+  for (let m = 0; m < 12; m++) {
+    const first = new Date(year, m, 1);
+    const weekIndex = Math.floor((startOfWeekMonday(first) - gridStart) / (7 * 24 * 3600 * 1000));
+    monthStarts.push({ m, weekIndex });
+  }
+
+  const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const monthHeaderCells = weeks
+    .map((_, idx) => {
+      const found = monthStarts.find((ms) => ms.weekIndex === idx);
+      return `<div class="hm-month">${found ? monthNames[found.m] : ""}</div>`;
+    })
+    .join("");
+
+  const dowLabels = ["Mo","Tu","We","Th","Fr","Sa","Su"];
+
+  const rowsHtml = dowLabels
+    .map((dow, row) => {
+      const cells = weeks
+        .map((weekStart) => {
+          const day = addDays(weekStart, row);
+          const iso = isoDateLocal(day);
+
+          const inYear = day >= yearStart && day <= yearEnd;
+          const data = map.get(iso);
+          const rate = data ? data.rate : 0;
+
+          const bg = inYear ? colorForRate(rate) : "transparent";
+          const border = inYear ? "rgba(0,0,0,0.06)" : "transparent";
+          const text = inYear ? day.getDate() : "";
+
+          const title = inYear
+            ? `${iso}: ${Math.round(rate * 100)}% (${data ? data.done : 0}/${data ? data.total : 0})`
+            : "";
+
+          return `
+            <div class="hm-cell"
+              title="${escapeHtml(title)}"
+              style="background:${bg};border-color:${border};opacity:${inYear ? 1 : 0}">
+              ${text}
+            </div>`;
+        })
+        .join("");
+
+      return `
+        <div class="hm-row">
+          <div class="hm-dow">${dow}</div>
+          <div class="hm-grid" style="grid-template-columns: repeat(${weeks.length}, var(--hm-cell));">
+            ${cells}
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  wrap.innerHTML = `
+    <div class="hm-wrap">
+      <div class="hm-months" style="grid-template-columns: 42px repeat(${weeks.length}, var(--hm-cell));">
+        <div></div>
+        ${monthHeaderCells}
+      </div>
+      ${rowsHtml}
+    </div>`;
+}
+
+function setupCreateHabit() {
+  document.getElementById("createHabitForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await createHabit();
+  });
+
+  document.getElementById("habit-frequency")?.addEventListener("change", (e) => {
+    const container = document.getElementById("custom-days-container");
+    if (container) container.classList.toggle("d-none", e.target.value !== "custom");
+  });
 }
 
 async function createHabit() {
-  const selectedTags = Array.from(
-    document.querySelectorAll(".habit-tag-checkbox:checked")
-  ).map(cb => cb.value);
-
   const errEl = document.getElementById("habit-error");
   errEl?.classList.add("d-none");
+
+  const selectedTags = Array.from(document.querySelectorAll(".habit-tag-checkbox:checked")).map(
+    (cb) => cb.value
+  );
 
   const name = document.getElementById("habit-name").value.trim();
   const frequency = document.getElementById("habit-frequency").value;
@@ -522,25 +1115,19 @@ async function createHabit() {
   };
 
   try {
-    const createdHabitResp = await apiRequest("/api/habits", {
-      method: "POST",
-      body: payload,
-    });
-
+    const createdHabitResp = await apiRequest("/api/habits", { method: "POST", body: payload });
     const createdHabit = createdHabitResp?.habit || createdHabitResp;
-    console.log("HABIT CREATED:", createdHabit);
 
+    const icon = document.getElementById("habit-icon")?.value || "🎯";
+    if (createdHabit?._id) setHabitIcon(createdHabit._id, icon);
 
     const reminder = collectReminderData();
-    console.log("REMINDER PAYLOAD:", reminder);
-
     if (reminder) {
       try {
         await apiRequest(`/api/reminders/habits/${createdHabit._id}/reminders`, {
           method: "POST",
           body: reminder,
         });
-        console.log("REMINDER CREATED");
       } catch (e) {
         console.error("REMINDER CREATE ERROR:", e);
         alert("Habit created, but reminder was not saved");
@@ -552,10 +1139,8 @@ async function createHabit() {
     modalInstance?.hide();
 
     document.getElementById("createHabitForm").reset();
-    document.getElementById("custom-days-container").classList.add("d-none");
-    document
-      .querySelectorAll(".habit-tag-checkbox")
-      .forEach(cb => (cb.checked = false));
+    document.getElementById("custom-days-container")?.classList.add("d-none");
+    document.querySelectorAll(".habit-tag-checkbox").forEach((cb) => (cb.checked = false));
     resetReminderForm();
 
     CURRENT_VIEW = "list";
@@ -605,6 +1190,7 @@ function renderProfile(user) {
   document.getElementById("user-email").textContent = user.email || "";
   document.getElementById("user-timezone").textContent = `Timezone: ${user.timezone || "UTC"}`;
   renderAvatar(user);
+  renderGamificationUI();
 }
 
 function renderAvatar(user) {
@@ -624,40 +1210,6 @@ function renderAvatar(user) {
   }
 }
 
-function setupLogout() {
-  document.getElementById("logoutBtn")?.addEventListener("click", () => {
-    localStorage.clear();
-    window.location.href = "/";
-  });
-}
-
-function setupCreateHabit() {
-  document.getElementById("createHabitForm")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    await createHabit();
-  });
-
-  document.getElementById("habit-frequency")?.addEventListener("change", (e) => {
-    const container = document.getElementById("custom-days-container");
-    if (container) container.classList.toggle("d-none", e.target.value !== "custom");
-  });
-}
-
-
-function normalizeHabitsArray(data) {
-  return Array.isArray(data) ? data : data.habits || data.items || [];
-}
-
-function escapeHtml(s) {
-  return String(s || "").replace(/[&<>"']/g, (m) => {
-    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m];
-  });
-}
-
-function clampInt(n, min, max) {
-  return Math.max(min, Math.min(max, isNaN(n) ? min : n));
-}
-
 async function uploadAvatar(file) {
   const form = new FormData();
   form.append("avatar", file);
@@ -673,6 +1225,13 @@ async function uploadAvatar(file) {
   return data.user;
 }
 
+function setupLogout() {
+  document.getElementById("logoutBtn")?.addEventListener("click", () => {
+    localStorage.clear();
+    window.location.href = "/";
+  });
+}
+
 function collectReminderData() {
   const time = document.getElementById("reminder-time")?.value;
   if (!time) return null;
@@ -684,8 +1243,8 @@ function collectReminderData() {
   return {
     time,
     daysOfWeek: days,
-    enabled: document.getElementById("reminder-enabled").checked,
-    note: document.getElementById("reminder-note").value || "",
+    enabled: document.getElementById("reminder-enabled")?.checked ?? true,
+    note: document.getElementById("reminder-note")?.value || "",
   };
 }
 
@@ -700,465 +1259,6 @@ function resetReminderForm() {
 
   document.querySelectorAll(".reminder-day").forEach((cb) => (cb.checked = false));
 }
-
-async function renderStatsView() {
-  const box = document.getElementById("habits-container");
-  box.innerHTML = `<p class="text-center text-muted mt-4">Loading stats...</p>`;
-
-  let resp;
-  try {
-    resp = await apiRequest(`/api/stats/overview?days=365`);
-  } catch (e) {
-    box.innerHTML = `
-      <div class="alert alert-warning">
-        Stats error: <b>${escapeHtml(e.message)}</b><br/>
-        Expected: <code>GET /api/stats/overview?days=365</code>
-      </div>`;
-    return;
-  }
-
-  const ov = resp?.overview || {};
-  const byDayRaw = Array.isArray(ov.byDay) ? ov.byDay : [];
-  const byDay = byDayRaw.map((d) => ({
-    ...d,
-    rate: d.total && d.total > 0 ? d.done / d.total : 0,
-  }));
-
-  const completionPercent = Math.round((ov.completionRate || 0) * 100);
-
-  box.innerHTML = `
-    <div class="p-2">
-      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h4 class="fw-bold m-0">Statistics</h4>
-        <div class="text-muted small">Based on your check-ins (completions)</div>
-      </div>
-
-      <div class="row g-3 mb-3">
-        <div class="col-6 col-lg-3">
-          <div class="bg-white rounded-4 shadow-sm p-3">
-            <div class="text-muted small">Completion</div>
-            <div class="fs-3 fw-bold">${completionPercent}%</div>
-          </div>
-        </div>
-        <div class="col-6 col-lg-3">
-          <div class="bg-white rounded-4 shadow-sm p-3">
-            <div class="text-muted small">Current streak</div>
-            <div class="fs-3 fw-bold">${ov.currentStreak ?? 0}</div>
-          </div>
-        </div>
-        <div class="col-6 col-lg-3">
-          <div class="bg-white rounded-4 shadow-sm p-3">
-            <div class="text-muted small">Best streak</div>
-            <div class="fs-3 fw-bold">${ov.bestStreak ?? 0}</div>
-          </div>
-        </div>
-        <div class="col-6 col-lg-3">
-          <div class="bg-white rounded-4 shadow-sm p-3">
-            <div class="text-muted small">Total habits</div>
-            <div class="fs-3 fw-bold">${ov.totalHabits ?? 0}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-4 shadow-sm p-3 mb-3">
-        <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-          <div class="fw-semibold" id="statsChartTitle">Daily completion %</div>
-
-          <select id="statsRange" class="form-select form-select-sm" style="width:auto">
-            <option value="daily" selected>Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-        </div>
-
-        <canvas id="statsChart" height="120"></canvas>
-      </div>
-
-      <div class="bg-white rounded-4 shadow-sm p-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="fw-semibold">Calendar</div>
-        </div>
-
-        <div id="heatmapWrap"></div>
-
-        <div class="text-muted small mt-2">
-          Darker = higher completion
-        </div>
-      </div>
-    </div>
-  `;
-
-  renderRange("daily");
-  const select = document.getElementById("statsRange");
-  select?.addEventListener("change", () => {
-    renderRange(select.value);
-  });
-
-  function aggregateByWeek(arr) {
-    function getISOWeekKey(dateStr) {
-      const d = new Date(dateStr + "T12:00:00");
-      const day = (d.getDay() + 6) % 7; 
-      d.setDate(d.getDate() - day + 3); 
-      const firstThu = new Date(d.getFullYear(), 0, 4);
-      const firstDay = (firstThu.getDay() + 6) % 7;
-      firstThu.setDate(firstThu.getDate() - firstDay + 3);
-      const week = 1 + Math.round((d - firstThu) / (7 * 24 * 3600 * 1000));
-      const year = d.getFullYear();
-      return `${year}-W${String(week).padStart(2, "0")}`;
-    }
-
-    const map = new Map();
-    for (const x of arr) {
-      if (!x?.date) continue;
-      const key = getISOWeekKey(x.date.slice(0, 10));
-      const cur = map.get(key) || { key, done: 0, total: 0 };
-      cur.done += x.done || 0;
-      cur.total += x.total || 0;
-      map.set(key, cur);
-    }
-
-    return Array.from(map.values())
-      .sort((a, b) => a.key.localeCompare(b.key))
-      .map((w) => ({
-        date: w.key,
-        done: w.done,
-        total: w.total,
-        rate: w.total ? w.done / w.total : 0,
-      }));
-  }
-
-  function aggregateByMonth(arr) {
-    const map = new Map(); 
-    for (const d of arr) {
-      const key = (d.date || "").slice(0, 7);
-      if (!key) continue;
-      const cur = map.get(key) || { key, done: 0, total: 0 };
-      cur.done += d.done || 0;
-      cur.total += d.total || 0;
-      map.set(key, cur);
-    }
-    return Array.from(map.values())
-      .sort((a, b) => a.key.localeCompare(b.key))
-      .map((m) => ({
-        date: m.key,
-        done: m.done,
-        total: m.total,
-        rate: m.total ? m.done / m.total : 0,
-      }));
-  }
-
-  function renderRange(range) {
-    const title = document.getElementById("statsChartTitle");
-    const hint = document.getElementById("heatmapHint");
-
-    if (range === "daily") {
-      if (title) title.textContent = "Daily completion %";
-
-      const START_DATE = "2026-01-01";
-      const daily = byDay.filter(d => d.date >= START_DATE);
-
-      renderStatsChart(daily);
-      renderHeatmapYear(2026, byDay);
-      return;
-    }
-
-    if (range === "weekly") {
-      if (title) title.textContent = "Weekly completion %";
-
-      const START_DATE = "2026-01-01";
-      const dailyFrom2026 = byDay.filter(d => d.date >= START_DATE);
-
-      const weekly = aggregateByWeek(dailyFrom2026);
-      renderStatsChart(weekly);
-      renderHeatmapYear(2026, byDay);
-      return;
-    }
-
-    if (range === "monthly") {
-      if (title) title.textContent = "Monthly completion %";
-
-      const START_DATE = "2026-01-01";
-      const dailyFrom2026 = byDay.filter(d => d.date >= START_DATE);
-
-      const monthly = aggregateByMonth(dailyFrom2026);
-      renderStatsChart(monthly);
-      renderHeatmapYear(2026, byDay);
-      return;
-    }
-}
-
-function renderStatsChart(byDay) {
-  const canvas = document.getElementById("statsChart");
-  if (!canvas) return;
-
-  const labels = byDay.map(x => (x.date || "").slice(5)); 
-  const rates = byDay.map(x => Math.round((x.rate || 0) * 100));
-
-  if (STATS_CHART) STATS_CHART.destroy();
-
-  STATS_CHART = new Chart(canvas, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{ label: "Completion %", data: rates }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: true } },
-      scales: { y: { beginAtZero: true, max: 100 } }
-    }
-  });
-}
-
-function renderHeatmap(byDay) {
-  const wrap = document.getElementById("heatmapWrap");
-  if (!wrap) return;
-
-  if (!Array.isArray(byDay) || byDay.length === 0) {
-    wrap.innerHTML = `<div class="text-muted small">No data yet. Make some check-ins and refresh.</div>`;
-    return;
-  }
-
-  const items = byDay
-    .map(d => ({
-      date: d.date,
-      done: d.done ?? 0,
-      total: d.total ?? 0,
-      rate: d.total ? (d.done / d.total) : 0
-    }))
-    .filter(x => x.date);
-
-  const start = new Date(items[0].date + "T00:00:00");
-  const end = new Date(items[items.length - 1].date + "T00:00:00");
-  const mondayIndex = (d) => (d.getDay() + 6) % 7; 
-  const gridStart = new Date(start);
-  gridStart.setDate(gridStart.getDate() - mondayIndex(gridStart));
-
-  const gridEnd = new Date(end);
-  gridEnd.setDate(gridEnd.getDate() + (6 - mondayIndex(gridEnd)));
-
-  const map = new Map(items.map(x => [x.date, x]));
-  const cellSize = 34;   
-  const gap = 10;
-  const weeks = [];
-
-  for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 7)) {
-    const week = [];
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(d);
-      day.setDate(day.getDate() + i);
-      const iso = day.toISOString().slice(0, 10);
-      week.push({ iso, day });
-    }
-    weeks.push(week);
-  }
-
-  const monthLabels = [];
-  for (let w = 0; w < weeks.length; w++) {
-    const week = weeks[w];
-    const firstOfMonth = week.find(x => x.day.getDate() === 1);
-    if (firstOfMonth) {
-      monthLabels.push({
-        weekIndex: w,
-        label: firstOfMonth.day.toLocaleString("en-US", { month: "short" })
-      });
-    }
-  }
-
-  const dowLabels = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-
-  function level(rate) {
-    if (rate >= 0.75) return 4;
-    if (rate >= 0.50) return 3;
-    if (rate >= 0.25) return 2;
-    if (rate > 0) return 1;
-    return 0;
-  }
-
-  function color(lvl) {
-    return (
-      lvl === 4 ? "#6d28d9" :
-      lvl === 3 ? "#8b5cf6" :
-      lvl === 2 ? "#c4b5fd" :
-      lvl === 1 ? "#ede9fe" :
-      "#f3f4f6"
-    );
-  }
-
-  const monthRow = `
-    <div style="display:flex;align-items:center;gap:${gap}px;margin-left:46px;margin-bottom:10px;">
-      ${weeks.map((_, w) => {
-        const m = monthLabels.find(x => x.weekIndex === w);
-        return `<div style="width:${cellSize}px;text-align:left;font-size:14px;color:#6b7280;">${m ? m.label : ""}</div>`;
-      }).join("")}
-    </div>
-  `;
-
-  const rows = dowLabels.map((dow, rowIdx) => {
-    const cells = weeks.map((week) => {
-      const { iso } = week[rowIdx];
-      const it = map.get(iso);
-      const r = it ? it.rate : 0;
-      const lvl = it ? level(r) : 0;
-
-      const title = it
-        ? `${iso}: ${Math.round(r * 100)}% (${it.done}/${it.total})`
-        : iso;
-
-      return `
-        <div title="${escapeHtml(title)}"
-             style="
-               width:${cellSize}px;height:${cellSize}px;
-               border-radius:12px;
-               background:${color(lvl)};
-               border:2px solid rgba(0,0,0,0.06);
-               display:flex;align-items:center;justify-content:center;
-               font-weight:700;color:#9ca3af;
-             ">
-          ${new Date(iso + "T00:00:00").getDate()}
-        </div>
-      `;
-    }).join("");
-
-    return `
-      <div style="display:flex;align-items:center;gap:${gap}px;margin-bottom:${gap}px;">
-        <div style="width:46px;color:#6b7280;font-weight:700;">${dow}</div>
-        ${cells}
-      </div>
-    `;
-  }).join("");
-
-  const daysCount = items.length;
-
-  wrap.innerHTML = `
-    <div style="overflow-x:auto;">
-      ${monthRow}
-      <div style="min-width:${46 + weeks.length * (cellSize + gap)}px;">
-        ${rows}
-      </div>
-      <div class="text-muted small mt-2">Showing ${daysCount} days</div>
-    </div>
-  `;
-}
-
-function isoDateLocal(d) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  const y = x.getFullYear();
-  const m = String(x.getMonth() + 1).padStart(2, "0");
-  const day = String(x.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function startOfWeekMonday(d) {
-  const x = new Date(d);
-  const jsDay = x.getDay();
-  const diff = (jsDay + 6) % 7; 
-  x.setDate(x.getDate() - diff);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function addDays(d, n) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
-
-function colorForRate(rate) {
-  if (rate >= 0.75) return "#6c63ff";   
-  if (rate >= 0.5)  return "#8b83ff";
-  if (rate >= 0.25) return "#c7c3ff";
-  if (rate > 0)     return "#ecebff";
-  return "#f3f4f6";
-}
-
-function renderHeatmapYear(year, byDay) {
-  const wrap = document.getElementById("heatmapWrap");
-  if (!wrap) return;
-
-  const map = new Map();
-  (byDay || []).forEach((x) => {
-    if (!x?.date) return;
-    const rate = x.total ? x.done / x.total : 0;
-    map.set(x.date.slice(0, 10), { rate, done: x.done || 0, total: x.total || 0 });
-  });
-
-  const yearStart = new Date(`${year}-01-01T00:00:00`);
-  const yearEnd = new Date(`${year}-12-31T00:00:00`);
-  const gridStart = startOfWeekMonday(yearStart);
-  const gridEnd = addDays(startOfWeekMonday(addDays(yearEnd, 6)), 6); 
-  const weeks = [];
-  for (let d = new Date(gridStart); d <= gridEnd; d = addDays(d, 7)) {
-    weeks.push(new Date(d));
-  }
-
-  const monthStarts = [];
-  for (let m = 0; m < 12; m++) {
-    const first = new Date(year, m, 1);
-    const weekIndex = Math.floor((startOfWeekMonday(first) - gridStart) / (7 * 24 * 3600 * 1000));
-    monthStarts.push({ m, weekIndex });
-  }
-
-  const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-  const monthHeaderCells = weeks.map((_, idx) => {
-    const found = monthStarts.find(ms => ms.weekIndex === idx);
-    return `<div class="hm-month">${found ? monthNames[found.m] : ""}</div>`;
-  }).join("");
-
-  const dowLabels = ["Mo","Tu","We","Th","Fr","Sa","Su"];
-  const rowsHtml = dowLabels.map((dow, row) => {
-    const cells = weeks.map((weekStart) => {
-      const day = addDays(weekStart, row); 
-      const iso = isoDateLocal(day);
-
-      const inYear = day >= yearStart && day <= yearEnd;
-      const data = map.get(iso);
-      const rate = data ? data.rate : 0;
-      const bg = inYear ? colorForRate(rate) : "transparent";
-      const border = inYear ? "rgba(0,0,0,0.06)" : "transparent";
-      const text = inYear ? day.getDate() : "";
-
-      const title = inYear
-        ? `${iso}: ${Math.round(rate * 100)}% (${data ? data.done : 0}/${data ? data.total : 0})`
-        : "";
-
-      return `
-        <div class="hm-cell"
-             title="${escapeHtml(title)}"
-             style="background:${bg};border-color:${border};opacity:${inYear ? 1 : 0}">
-          ${text}
-        </div>
-      `;
-    }).join("");
-
-    return `
-      <div class="hm-row">
-        <div class="hm-dow">${dow}</div>
-        <div class="hm-grid" style="grid-template-columns: repeat(${weeks.length}, var(--hm-cell));">
-          ${cells}
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  wrap.innerHTML = `
-    <div class="hm-wrap">
-      <div class="hm-months" style="grid-template-columns: 42px repeat(${weeks.length}, var(--hm-cell));">
-        <div></div>
-        ${monthHeaderCells}
-      </div>
-      ${rowsHtml}
-    </div>
-  `;
-}}
-
-
-
-
-
-
 
 async function loadTags() {
   try {
@@ -1197,10 +1297,10 @@ function setupCreateTag() {
       if (nameEl) nameEl.value = "";
       await loadTags();
       renderTagsInHabitForm();
-    } catch (e) {
-      console.error("Create tag error:", e);
+    } catch (e2) {
+      console.error("Create tag error:", e2);
       if (errEl) {
-        errEl.textContent = e.message || "Failed to create tag";
+        errEl.textContent = e2.message || "Failed to create tag";
         errEl.classList.remove("d-none");
       }
     } finally {
@@ -1214,28 +1314,27 @@ function renderTagsFilter() {
   if (!box) return;
 
   box.innerHTML = `
-    <button class="btn btn-sm rounded-pill ${
-      !CURRENT_TAG ? "btn-primary" : "btn-outline-secondary"
-    }" data-tag="">
-      All
-    </button>
-    ${TAGS.map(t => `
-      <button
-        class="btn btn-sm rounded-pill ${
-          CURRENT_TAG === t._id ? "btn-primary" : "btn-outline-secondary"
-        }"
-        data-tag="${t._id}"
-        style="border-color:${t.color};color:${t.color}"
-      >
-        ${escapeHtml(t.name)}
+    <li>
+      <button class="dropdown-item ${!CURRENT_TAG ? "active" : ""}" data-tag="">
+        All
       </button>
-    `).join("")}
+    </li>
+    ${TAGS.map(
+      (t) => `
+      <li>
+        <button class="dropdown-item ${CURRENT_TAG === t._id ? "active" : ""}"
+                data-tag="${t._id}">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:${t.color};margin-right:8px;"></span>
+          ${escapeHtml(t.name)}
+        </button>
+      </li>`
+    ).join("")}
   `;
 
-  box.querySelectorAll("button").forEach(btn => {
+  box.querySelectorAll("button[data-tag]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      CURRENT_TAG = btn.dataset.tag || null;
-      renderTagsFilter();
+      const tag = btn.dataset.tag || "";
+      CURRENT_TAG = tag ? tag : null;
       await refreshHabits();
     });
   });
@@ -1243,28 +1342,23 @@ function renderTagsFilter() {
 
 function renderTagsInHabitForm() {
   const box = document.getElementById("habitTags");
-  if (!box) {
-    console.warn("habitTags container not found");
-    return;
-  }
+  if (!box) return;
 
   if (!Array.isArray(TAGS) || TAGS.length === 0) {
     box.innerHTML = `<div class="text-muted small">No tags yet</div>`;
     return;
   }
 
-  box.innerHTML = TAGS.map(t => `
-    <label class="btn btn-sm btn-outline-secondary rounded-pill">
-      <input
-        type="checkbox"
-        class="habit-tag-checkbox d-none"
-        value="${t._id}"
-      >
-      ${escapeHtml(t.name)}
-    </label>
-  `).join("");
+  box.innerHTML = TAGS.map(
+    (t) => `
+      <label class="btn btn-sm btn-outline-secondary rounded-pill">
+        <input type="checkbox" class="habit-tag-checkbox d-none" value="${t._id}">
+        ${escapeHtml(t.name)}
+      </label>
+    `
+  ).join("");
 
-  box.querySelectorAll("label").forEach(label => {
+  box.querySelectorAll("label").forEach((label) => {
     const input = label.querySelector("input");
     input.addEventListener("change", () => {
       label.classList.toggle("btn-primary", input.checked);
@@ -1273,6 +1367,46 @@ function renderTagsInHabitForm() {
   });
 }
 
+function setupShop() {
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".shop-item");
+    if (!btn) return;
+
+    const type = btn.dataset.shop;
+    const value = btn.dataset.value || "";
+    const cost = clampInt(parseInt(btn.dataset.cost || "0", 10), 0, 999999);
+
+    const err = document.getElementById("shopError");
+    const ok = document.getElementById("shopOk");
+    err?.classList.add("d-none");
+    ok?.classList.add("d-none");
+
+    const g = loadGame();
+    if (cost > (g.coins || 0)) {
+      if (err) {
+        err.textContent = "Not enough coins";
+        err.classList.remove("d-none");
+      }
+      return;
+    }
+
+    if (type === "theme") {
+      g.coins = Math.max(0, (g.coins || 0) - cost);
+      g.purchases = g.purchases || {};
+      g.purchases[`theme:${value}`] = true;
+      saveGame(g);
+      setThemeColor(value);
+      if (ok) ok.classList.remove("d-none");
+      setTimeout(() => ok?.classList.add("d-none"), 1200);
+      return;
+    }
+  });
+
+  const shopModal = document.getElementById("shopModal");
+  shopModal?.addEventListener("shown.bs.modal", () => {
+    renderGamificationUI();
+  });
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const modal = document.getElementById("addHabitModal");
