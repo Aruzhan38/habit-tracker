@@ -41,4 +41,29 @@ async function deleteReminder(req, res, next) {
   }
 }
 
-module.exports = { createReminder, getReminders, deleteReminder };
+exports.replaceReminders = async (req, res, next) => {
+  try {
+    const { habitId } = req.params;
+
+    const habit = await Habit.findOne({ _id: habitId, user: req.user.id });
+    if (!habit) return res.status(404).json({ message: "Habit not found" });
+
+    const incoming = req.body;
+
+    let list = [];
+    if (Array.isArray(incoming)) list = incoming;
+    else if (Array.isArray(incoming.reminders)) list = incoming.reminders;
+    else if (incoming && typeof incoming === "object") list = [incoming];
+
+    const normalized = list.map(normReminder).filter(Boolean);
+
+    habit.reminders = normalized; // overwrite
+    await habit.save();
+
+    res.json({ reminders: habit.reminders });
+  } catch (e) {
+    next(e);
+  }
+}
+
+module.exports = { createReminder, getReminders, deleteReminder, replaceReminders };

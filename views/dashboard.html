@@ -339,6 +339,114 @@
     </div>
   </div>
 
+  <div class="modal fade" id="editHabitModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content rounded-4">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Edit Habit</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Name</label>
+          <input class="form-control" id="edit-habit-name" />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <input class="form-control" id="edit-habit-desc" />
+        </div>
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label">Frequency</label>
+            <select class="form-select" id="edit-habit-frequency">
+              <option value="daily">daily</option>
+              <option value="weekly">weekly</option>
+              <option value="custom">custom</option>
+            </select>
+          </div>
+
+          <div class="col-6">
+            <label class="form-label">Color</label>
+            <input class="form-control form-control-color w-100" id="edit-habit-color" type="color" />
+          </div>
+        </div>
+
+        <div id="edit-custom-days-container" class="mb-3 d-none mt-2">
+          <label class="form-label small text-muted">Choose week days:</label>
+          <div class="d-flex justify-content-between bg-light p-2 rounded">
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="1"> <br>Mo</label>
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="2"> <br>Tu</label>
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="3"> <br>We</label>
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="4"> <br>Th</label>
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="5"> <br>Fr</label>
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="6"> <br>Sa</label>
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="0"> <br>Su</label>
+          </div>
+        </div>
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label">Goal target</label>
+            <input class="form-control" id="edit-habit-target" type="number" min="1" />
+          </div>
+          <div class="col-6">
+            <label class="form-label">Goal unit</label>
+            <input class="form-control" id="edit-habit-unit" />
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label">Start date</label>
+          <input class="form-control" id="edit-habit-startDate" type="date" />
+        </div>
+
+        <hr class="my-3">
+        <h6 class="fw-bold mb-2">Reminder (optional)</h6>
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label">Time</label>
+            <input type="time" class="form-control" id="edit-reminder-time">
+          </div>
+
+          <div class="col-6 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="edit-reminder-enabled" checked>
+              <label class="form-check-label">Enabled</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-2">
+          <label class="form-label small text-muted">Days of week (optional)</label>
+          <div class="d-flex justify-content-between bg-light p-2 rounded">
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="1"> <br>Mo</label>
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="2"> <br>Tu</label>
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="3"> <br>We</label>
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="4"> <br>Th</label>
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="5"> <br>Fr</label>
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="6"> <br>Sa</label>
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="0"> <br>Su</label>
+          </div>
+        </div>
+
+        <div class="mt-2">
+          <label class="form-label">Note</label>
+          <input class="form-control" id="edit-reminder-note" placeholder="Reminder note">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary rounded-pill" id="saveEditHabitBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
   <div class="modal fade" id="shopModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content rounded-4">
@@ -402,6 +510,113 @@
     </div>
   </div>
 
+  <div class="modal fade" id="editHabitModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content rounded-4">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Edit Habit</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Name</label>
+          <input class="form-control" id="edit-habit-name" />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <input class="form-control" id="edit-habit-desc" />
+        </div>
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label">Frequency</label>
+            <select class="form-select" id="edit-habit-frequency">
+              <option value="daily">daily</option>
+              <option value="weekly">weekly</option>
+              <option value="custom">custom</option>
+            </select>
+          </div>
+
+          <div class="col-6">
+            <label class="form-label">Color</label>
+            <input class="form-control form-control-color w-100" id="edit-habit-color" type="color" />
+          </div>
+        </div>
+
+        <div id="edit-custom-days-container" class="mb-3 d-none mt-2">
+          <label class="form-label small text-muted">Choose week days:</label>
+          <div class="d-flex justify-content-between bg-light p-2 rounded">
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="1"> <br>Mo</label>
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="2"> <br>Tu</label>
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="3"> <br>We</label>
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="4"> <br>Th</label>
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="5"> <br>Fr</label>
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="6"> <br>Sa</label>
+            <label class="text-center"><input type="checkbox" class="edit-day-checkbox" value="0"> <br>Su</label>
+          </div>
+        </div>
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label">Goal target</label>
+            <input class="form-control" id="edit-habit-target" type="number" min="1" />
+          </div>
+          <div class="col-6">
+            <label class="form-label">Goal unit</label>
+            <input class="form-control" id="edit-habit-unit" />
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label">Start date</label>
+          <input class="form-control" id="edit-habit-startDate" type="date" />
+        </div>
+
+        <hr class="my-3">
+        <h6 class="fw-bold mb-2">Reminder (optional)</h6>
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label">Time</label>
+            <input type="time" class="form-control" id="edit-reminder-time">
+          </div>
+
+          <div class="col-6 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="edit-reminder-enabled" checked>
+              <label class="form-check-label">Enabled</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-2">
+          <label class="form-label small text-muted">Days of week (optional)</label>
+          <div class="d-flex justify-content-between bg-light p-2 rounded">
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="1"> <br>Mo</label>
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="2"> <br>Tu</label>
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="3"> <br>We</label>
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="4"> <br>Th</label>
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="5"> <br>Fr</label>
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="6"> <br>Sa</label>
+            <label class="text-center"><input type="checkbox" class="edit-reminder-day" value="0"> <br>Su</label>
+          </div>
+        </div>
+
+        <div class="mt-2">
+          <label class="form-label">Note</label>
+          <input class="form-control" id="edit-reminder-note" placeholder="Reminder note">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary rounded-pill" id="saveEditHabitBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/js/api.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

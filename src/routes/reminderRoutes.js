@@ -24,4 +24,7 @@ router.delete(
   reminders.deleteReminder
 );
 
+router.post("/reminders/habits/:habitId/reminders", protect, reminders.createReminder);
+router.put("/reminders/habits/:habitId/reminders", protect, reminders.replaceReminders);
+
 module.exports = router;
