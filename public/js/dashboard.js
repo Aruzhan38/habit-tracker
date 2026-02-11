@@ -77,6 +77,10 @@ async function init() {
     applySavedTheme();
     ensureGamificationState();
     renderGamificationUI();
+
+    if (!isPremiumUser()) {
+      lockPremiumSection("shopBlock", openPremiumModal);
+    }
   } catch (e) {
     console.error("Profile load error:", e);
     localStorage.clear();
@@ -640,6 +644,52 @@ async function openEditHabit(habitId) {
   }
 }
 
+async function saveEditedHabit() {
+  try {
+    const btn = document.getElementById("saveEditHabitBtn");
+    const habitId = btn?.dataset.id;
+    if (!habitId) return alert("Habit ID missing");
+
+    const payload = {
+      name: document.getElementById("edit-habit-name").value.trim(),
+      description: document.getElementById("edit-habit-desc").value.trim(),
+      frequency: document.getElementById("edit-habit-frequency").value,
+      color: document.getElementById("edit-habit-color").value,
+      goal: {
+        type: "count", 
+        target: Number(document.getElementById("edit-habit-target").value) || 1,
+        unit: document.getElementById("edit-habit-unit").value
+      },
+      startDate: document.getElementById("edit-habit-startDate").value,
+      schedule: {
+        daysOfWeek: Array.from(
+          document.querySelectorAll(".edit-day-checkbox:checked")
+        ).map(cb => Number(cb.value))
+      }
+    };
+
+    await apiRequest(`/api/habits/${habitId}`, {
+      method: "PATCH",
+      body: payload
+    });
+
+    bootstrap.Modal.getInstance(
+      document.getElementById("editHabitModal")
+    )?.hide();
+
+    location.reload();
+
+  } catch (e) {
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const saveBtn = document.getElementById("saveEditHabitBtn");
+  if (!saveBtn) return;
+
+  saveBtn.addEventListener("click", saveEditedHabit);
+});
+
 function setupHabitActions() {
   const box = document.getElementById("habits-container");
   if (!box) return;
@@ -764,12 +814,9 @@ function renderHabitCard(h) {
       <div class="habit-left">
         <div class="habit-icon" style="background: rgba(0,0,0,0.03)">${icon}</div>
         <div class="habit-main">
-          <div class="d-flex align-items-start justify-content-between gap-2">
-            <div>
-              <p class="habit-title">${escapeHtml(h.name)}</p>
-              <p class="habit-sub">${escapeHtml(h.description || "")}</p>
-            </div>
-            ${picker}
+          <div>
+            <p class="habit-title">${escapeHtml(h.name)}</p>
+            <p class="habit-sub">${escapeHtml(h.description || "")}</p>
           </div>
 
           <div class="habit-mini">
@@ -966,7 +1013,9 @@ async function renderStatsView() {
           </select>
         </div>
 
-        <canvas id="statsChart" height="120"></canvas>
+        <div id="statsChartWrap">
+          <canvas id="statsChart" height="120"></canvas>
+        </div>
       </div>
 
       <div class="bg-white rounded-4 shadow-sm p-3">
@@ -1049,11 +1098,25 @@ async function renderStatsView() {
     const title = document.getElementById("statsChartTitle");
     const START_DATE = "2026-01-01";
     const dailyFrom2026 = byDay.filter((d) => d.date >= START_DATE);
+    const chartWrap = document.getElementById("statsChartWrap");
 
     if (range === "daily") {
       title && (title.textContent = "Daily completion %");
+
       renderStatsChart(dailyFrom2026);
+
+      if (chartWrap?.closest(".premium-locked")) {
+        const locked = chartWrap.closest(".premium-locked");
+        locked.parentElement.appendChild(chartWrap);
+        locked.remove();
+      }
+
       renderHeatmapYear(2026, byDay);
+      return;
+    }
+
+    if (!isPremiumUser()) {
+      lockPremiumSection("statsChartWrap", openPremiumModal);
       return;
     }
 
@@ -1234,7 +1297,7 @@ function lockPremiumSection(wrapperId, onClick) {
   overlay.innerHTML = `
     <div>
       <div class="premium-badge">PREMIUM</div>
-      <p class="premium-title">Calendar Heatmap is locked</p>
+      <p class="premium-title">This function is locked</p>
       <p class="premium-sub">Click to compare plans and unlock</p>
     </div>
   `;
@@ -1573,12 +1636,12 @@ function renderTagsInHabitForm() {
 
 function setupShop() {
   document.addEventListener("click", (e) => {
-    const btn = e.target.closest(".shop-item");
-    if (!btn) return;
+    const item = e.target.closest(".shop-item");
+    if (!item) return;
 
-    const type = btn.dataset.shop;
-    const value = btn.dataset.value || "";
-    const cost = clampInt(parseInt(btn.dataset.cost || "0", 10), 0, 999999);
+    const type = item.dataset.shop;
+    const value = item.dataset.value || "";
+    const cost = clampInt(parseInt(item.dataset.cost || "0", 10), 0, 999999);
 
     const err = document.getElementById("shopError");
     const ok = document.getElementById("shopOk");
@@ -1586,39 +1649,108 @@ function setupShop() {
     ok?.classList.add("d-none");
 
     const g = loadGame();
-    if (cost > (g.coins || 0)) {
-      if (err) {
-        err.textContent = "Not enough coins";
-        err.classList.remove("d-none");
-      }
-      return;
-    }
+    g.purchases = g.purchases || {};
+
+    const isOwned = g.purchases[`theme:${value}`];
+    const isActive = g.theme === value;
 
     if (type === "theme") {
       const isPremium = CURRENT_USER?.plan === "premium";
 
-      if (!isPremium && cost > 0) {
+      if (!isPremium) {
         const modal = new bootstrap.Modal(document.getElementById("premiumModal"));
         modal.show();
         return;
       }
 
-      g.coins = Math.max(0, (g.coins || 0) - cost);
-      g.purchases = g.purchases || {};
+      if (isActive) return;
+      if (isOwned) {
+        setThemeColor(value);
+        renderShopState();
+        return;
+      }
+
+      if (cost > (g.coins || 0)) {
+        if (err) {
+          err.textContent = "Not enough coins";
+          err.classList.remove("d-none");
+        }
+        return;
+      }
+
+      g.coins -= cost;
       g.purchases[`theme:${value}`] = true;
+      g.theme = value;
+
       saveGame(g);
       setThemeColor(value);
 
       if (ok) ok.classList.remove("d-none");
-      setTimeout(() => ok?.classList.add("d-none"), 1200);
-      return;
+
+      renderShopState();
     }
   });
 
   const shopModal = document.getElementById("shopModal");
   shopModal?.addEventListener("shown.bs.modal", () => {
-    renderGamificationUI();
+    renderShopState();
   });
+
+  shopModal?.addEventListener("shown.bs.modal", () => {
+    const g = loadGame();
+
+    document.querySelectorAll(".shop-item[data-shop='theme']").forEach(btn => {
+      const value = btn.dataset.value;
+      const costEl = btn.querySelector(".shop-cost");
+
+      const isOwned = g.purchases && g.purchases[`theme:${value}`];
+
+      if (isOwned) {
+        costEl.textContent = "Owned";
+        btn.classList.add("owned-theme");
+      } else if (value === "#6c63ff") {
+        costEl.textContent = "Free";
+      } else {
+        costEl.textContent = btn.dataset.cost + " 🪙";
+      }
+    });
+  });
+
+  renderShopState();
+}
+
+function renderShopState() {
+  const g = loadGame();
+  const items = document.querySelectorAll(".shop-item");
+
+  items.forEach((item) => {
+    const value = item.dataset.value;
+    const cost = parseInt(item.dataset.cost || "0", 10);
+    const btn = item.querySelector(".shop-btn");
+
+    if (!btn) return;
+
+    const isOwned = g.purchases?.[`theme:${value}`];
+    const isActive = g.theme === value;
+
+    if (isActive) {
+      btn.textContent = "Active";
+      btn.disabled = true;
+      btn.classList.add("btn-success");
+    } 
+    else if (isOwned) {
+      btn.textContent = "Owned";
+      btn.disabled = false;
+      btn.classList.remove("btn-success");
+    } 
+    else {
+      btn.textContent = `Buy (${cost} coins)`;
+      btn.disabled = false;
+      btn.classList.remove("btn-success");
+    }
+  });
+
+  renderGamificationUI();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -1632,11 +1764,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
 document.addEventListener("click", async (e) => {
   if (e.target.id === "upgradeBtn") {
+
     try {
+      const data = await window.api.get("/api/billing/cards");
+
+      if (!data.cards || data.cards.length === 0) {
+        const cardModal = bootstrap.Modal.getOrCreateInstance(
+          document.getElementById("addCardModal")
+        );
+        cardModal.show();
+        return;
+      }
+
       await apiRequest("/api/users/upgrade", { method: "POST" });
 
       alert("Welcome to Premium 🎉");
       location.reload();
+
     } catch (err) {
       alert(err.message);
     }
@@ -1731,9 +1875,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (expYearNum === currentYear && expMonthNum < currentMonth) return alert("Card is expired");
 
       const payload = {
-        number,
+        cardNumber: number,   
         expMonth: pad2(expMonthNum),
         expYear: String(expYearNum),
+        brand: "VISA"
       };
 
       await window.api.post("/api/billing/cards", payload);
@@ -1748,4 +1893,65 @@ document.addEventListener("DOMContentLoaded", () => {
       alert(`Save failed: ${err?.message || "Check console"}`);
     }
   });
+
+  loadCards();
 });
+
+async function loadCards() {
+  try {
+    const data = await window.api.get("/api/billing/cards");
+
+    const section = document.getElementById("billingSection");
+    if (!section) return;
+
+    section.innerHTML = "";
+
+    if (!data.cards || data.cards.length === 0) {
+      section.innerHTML = `
+        <button class="btn btn-outline-primary rounded-pill"
+                data-bs-toggle="modal"
+                data-bs-target="#addCardModal">
+          Add new card
+        </button>
+      `;
+      return;
+    }
+
+    data.cards.forEach(card => {
+      section.innerHTML += `
+        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+          <div>
+            💳 ${card.brand || "Card"} **** ${card.last4}
+            <div class="small text-muted">
+              ${card.expMonth}/${card.expYear}
+            </div>
+          </div>
+          <button class="btn btn-sm btn-outline-danger"
+                  onclick="deleteCard('${card._id}')">
+            ✕
+          </button>
+        </div>
+      `;
+    });
+
+    section.innerHTML += `
+      <button class="btn btn-sm btn-outline-primary rounded-pill mt-2"
+              data-bs-toggle="modal"
+              data-bs-target="#addCardModal">
+        + Add new card
+      </button>
+    `;
+
+  } catch (err) {
+    console.error("Load cards error:", err);
+  }
+}
+
+async function deleteCard(id) {
+  try {
+    await window.api.del(`/api/billing/cards/${id}`);
+    loadCards();
+  } catch (err) {
+    alert("Failed to delete card");
+  }
+}
