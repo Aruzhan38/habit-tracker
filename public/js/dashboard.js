@@ -3,7 +3,7 @@ console.log("dashboard.js is running");
 let CURRENT_FILTER = "active";
 let CURRENT_VIEW = "list";
 let CAL_DAYS = 7;
-let CAL_ANCHOR = isoToday();
+let CAL_ANCHOR = null;
 let STATS_CHART = null;
 let TAGS = [];
 let CURRENT_TAG = null;
@@ -47,6 +47,7 @@ async function init() {
     const meResp = await apiRequest("/api/users/me");
     const user = meResp.user || meResp;
     CURRENT_USER = user;
+    CAL_ANCHOR = isoToday();
 
     renderProfile(user);
 
@@ -69,14 +70,15 @@ async function init() {
 }
 
 function isoToday() {
-  const d = new Date();
-  return d.toLocaleDateString("sv-SE");
+  const tz = CURRENT_USER?.timezone || "Asia/Almaty";
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: tz }).format(new Date());
 }
 
 function addDaysISO(iso, delta) {
-  const d = new Date(iso + "T12:00:00");
-  d.setDate(d.getDate() + delta);
-  return d.toISOString().slice(0, 10);
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + delta);
+  return dt.toISOString().slice(0, 10);
 }
 
 function clampInt(n, min, max) {
@@ -253,11 +255,6 @@ function isDueToday(h) {
     const sd = h?.startDate ? new Date(String(h.startDate).slice(0, 10) + "T12:00:00") : null;
     if (sd && !isNaN(sd.getTime())) return sd.getDay() === dow;
     return dow === 1;
-  }
-
-  if (freq === "custom") {
-    if (Array.isArray(schedule) && schedule.length) return schedule.includes(dow);
-    return false;
   }
 
   return false;

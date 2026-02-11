@@ -2,13 +2,13 @@ const Habit = require('../models/habit');
 
 function toISODate(d) {
   const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
+  x.setUTCHours(0, 0, 0, 0);
   return x.toISOString().slice(0, 10);
 }
 
 function addDays(dateStr, delta) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + delta);
+  const d = new Date(dateStr + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + delta);
   return toISODate(d);
 }
 
@@ -27,13 +27,13 @@ const { startOfWeek, endOfWeek, isSameDay } = require('date-fns');
 exports.getDailyView = async (req, res, next) => {
   try {
     const userId = getUserId(req);
-    const endDateStr = (req.query.date || toISODate(new Date())).slice(0, 10);
+    const startDateStr = (req.query.date || toISODate(new Date())).slice(0, 10);
     const days = Math.max(1, Math.min(parseInt(req.query.days || "7", 10), 30));
     const tag = req.query.tag;
 
     const dates = [];
     for (let i = 0; i < days; i++) {
-      dates.unshift(addDays(endDateStr, -i));
+      dates.push(addDays(startDateStr, i));
     }
 
     const habits = await Habit.find({
@@ -93,7 +93,7 @@ exports.getDailyView = async (req, res, next) => {
       };
     });
 
-    res.json({ date: endDateStr, dates, habits: result });
+    res.json({ date: startDateStr, dates, habits: result });
   } catch (e) {
     next(e);
   }
