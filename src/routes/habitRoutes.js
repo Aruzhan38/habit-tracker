@@ -21,7 +21,6 @@ router.post('/:habitId/unarchive', protect, habitController.unarchiveHabit);
 // tags
 router.post('/:habitId/tags/:tagId', protect, tagController.assignTagToHabit);
 
-
 // check-ins
 router.post("/:habitId/checkins", protect, habitController.addCheckIn);
 router.get("/:habitId/checkins", protect, habitController.getCheckIns);

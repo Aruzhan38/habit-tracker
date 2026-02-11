@@ -76,6 +76,9 @@ const habitSchema = new mongoose.Schema(
       default: "active",
     },
 
+    isPrivate: { type: Boolean, default: false },
+    locked: { type: Boolean, default: false },
+    pinHash: { type: String, default: "" },
 
     reminders: {
       type: [reminderSchema],

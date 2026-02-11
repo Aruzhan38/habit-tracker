@@ -45,7 +45,6 @@ function isTargetDayForHabit(habit, dow) {
   if (freq === "daily") return true;
   if (freq === "weekly") return true;
 
-  // custom
   const days = Array.isArray(habit.schedule?.daysOfWeek) ? habit.schedule.daysOfWeek : [];
   return days.length ? days.includes(dow) : true;
 }
@@ -244,4 +243,67 @@ exports.getCalendar = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+exports.advanced = async (req, res) => {
+  const userId = req.user._id;
+
+  const topHabits = await Checkin.aggregate([
+    { $match: { userId } },
+    { $group: {
+        _id: "$habitId",
+        done: { $sum: { $cond: ["$completed", 1, 0] } },
+        total: { $sum: 1 },
+      }
+    },
+    { $project: { rate: { $cond: [{ $gt: ["$total", 0] }, { $divide: ["$done", "$total"] }, 0] }, done: 1, total: 1 } },
+    { $sort: { rate: -1 } },
+    { $limit: 10 }
+  ]);
+
+  const habitIds = topHabits.map(x => x._id);
+  const habits = await Habit.find({ _id: { $in: habitIds }, userId }).select("name color isPrivate");
+  const map = new Map(habits.map(h => [String(h._id), h]));
+
+  const top = topHabits.map(x => {
+    const h = map.get(String(x._id));
+    return {
+      habitId: x._id,
+      name: h?.name || "Unknown",
+      color: h?.color || "#6c63ff",
+      isPrivate: !!h?.isPrivate,
+      done: x.done,
+      total: x.total,
+      rate: x.rate,
+    };
+  });
+
+  res.json({
+    advanced: {
+      topHabits: top,
+      generatedAt: new Date().toISOString(),
+    }
+  });
+};
+
+exports.getAdvancedStats = async (req, res) => {
+  try {
+    res.json({
+      advanced: {
+        yearlyCompletion: 87,
+        bestMonth: "March",
+        totalCheckins: 412,
+        avgStreak: 12.4
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getAdvanced = async (req, res) => {
+  res.json({
+    message: "Advanced stats (Premium only)",
+    user: { id: req.user.id || req.user._id, plan: req.user.plan },
+  });
 };

@@ -556,3 +556,205 @@ body {
   border: 1px solid #d1d5db !important;
   color: #4b5563 !important;
 }
+
+.premium-badge {
+  font-size: 0.75rem;
+  background: linear-gradient(45deg, #8b5cf6, #6366f1);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 900;
+  letter-spacing: .3px;
+}
+
+.premium-modal {
+  background: #f8fafc;
+  border-radius: 24px;
+}
+
+.premium-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px;
+  text-align: center;
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 10px 30px rgba(17,24,39,.05);
+  position: relative;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.premium-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px rgba(17,24,39,.12);
+}
+
+.premium-card-highlight {
+  border: 2px solid var(--accent);
+  box-shadow: 0 20px 50px rgba(108,99,255,.15);
+}
+
+.premium-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  font-size: .75rem;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+.premium-title {
+  font-weight: 900;
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+}
+
+.premium-price {
+  font-size: 2rem;
+  font-weight: 900;
+  margin-bottom: 20px;
+}
+
+.premium-price span {
+  font-size: .9rem;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.premium-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+
+.premium-features li {
+  padding: 8px 0;
+  font-weight: 600;
+  color: #374151;
+}
+
+.premium-footer {
+  margin-top: 20px;
+  font-size: .9rem;
+}
+
+.premium-footer.muted {
+  color: #9ca3af;
+}
+
+.billing-block {
+  background: #fff;
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+
+.billing-card-line {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #f7f7f9;
+  font-weight: 500;
+}
+
+.myplan-card{
+  background:#fff;
+  border-radius:18px;
+  padding:14px;
+  border:1px solid rgba(0,0,0,0.06);
+}
+
+/* Billing modal look */
+.billing-modal { border: 0; }
+.billing-head { background: #fff; border-bottom: 1px solid rgba(0,0,0,.06); }
+
+.brand-dot{
+  width: 36px; height: 36px;
+  border-radius: 12px;
+  display:flex; align-items:center; justify-content:center;
+  background: rgba(108,99,255,.12);
+  color:#6c63ff;
+}
+
+.billing-title{ font-weight: 800; font-size: 16px; line-height: 1.1; }
+.billing-sub{ font-size: 12px; color: #6b7280; }
+
+.billing-timer{
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: #111827;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 10px;
+  letter-spacing: 1px;
+}
+
+.input-with-icon{ position: relative; }
+.input-with-icon .right-icon{
+  position:absolute; right: 12px; top: 50%;
+  transform: translateY(-50%);
+  opacity: .6;
+  pointer-events: none;
+}
+
+.billing-side{
+  background: linear-gradient(180deg, rgba(108,99,255,.08), rgba(108,99,255,.02));
+  border-left: 1px solid rgba(0,0,0,.06);
+}
+
+.card-preview{
+  border-radius: 18px;
+  padding: 18px;
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgba(17,24,39,.12);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-preview::after{
+  content:"";
+  position:absolute; inset:-60px -80px auto auto;
+  width: 180px; height: 180px;
+  background: rgba(108,99,255,.15);
+  border-radius: 999px;
+  filter: blur(1px);
+}
+
+.card-preview-top{ display:flex; justify-content:space-between; align-items:center; }
+.chip{
+  width: 42px; height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #d1d5db, #9ca3af);
+}
+.wifi{ opacity:.6; }
+
+.card-preview-mid{ margin-top: 22px; }
+.card-holder{ font-weight: 800; letter-spacing: .6px; }
+.card-last4{ margin-top: 8px; font-weight: 800; font-size: 18px; }
+
+.card-preview-bot{
+  margin-top: 18px;
+  display:flex; justify-content:space-between; align-items:end;
+}
+.exp-label{ font-size: 10px; color:#6b7280; }
+.exp-val{ font-weight: 800; }
+
+.scheme{
+  width: 48px; height: 28px;
+  border-radius: 10px;
+  background: rgba(17,24,39,.08);
+  display:flex; align-items:center; justify-content:center;
+  font-weight: 800;
+  opacity: .8;
+}
+
+.bill-summary{
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px;
+  border: 1px solid rgba(0,0,0,.06);
+}
+.pay-amount{ font-weight: 900; font-size: 20px; }

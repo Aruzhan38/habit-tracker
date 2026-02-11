@@ -35,7 +35,13 @@
               <img id="avatar-img" class="avatar-img d-none" alt="avatar" />
             </div>
 
-            <h4 id="user-name" class="fw-bold">Loading...</h4>
+            <h4 class="fw-bold d-flex align-items-center justify-content-center gap-2">
+              <span id="user-name">Loading...</span>
+            </h4>
+            <button id="cancelPremiumBtn"
+                    class="btn btn-outline-danger btn-sm rounded-pill d-none">
+              Cancel Premium
+            </button>
             <p id="user-email" class="text-muted small mb-1"></p>
             <p class="text-muted small mb-2" id="user-timezone"></p>
 
@@ -44,6 +50,7 @@
             <div class="text-start">
               <p class="mb-1 small"><strong>Status:</strong> <span id="user-status">Beginner</span></p>
               <p class="mb-1 small"><strong>Habits:</strong> <span id="habits-count">0</span></p>
+              <p class="mb-1 small"><strong>My plan:</strong> <span id="planPill">Free</span></p>
               <div class="mt-2 profile-xp">
                 <div class="d-flex justify-content-between align-items-center">
                   <div class="small fw-bold">XP</div>
@@ -58,6 +65,19 @@
                 </div>
               </div>
             </div>
+            <hr class="my-3">
+
+            <div class="billing-block">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold m-0">My Cards</h6>
+              </div>
+
+              <div id="billingSection">
+
+              </div>
+            </div>
+
+            <hr class="my-3">
 
             <button class="btn btn-sm btn-outline-primary rounded-pill mt-3"
                     data-bs-toggle="modal"
@@ -134,7 +154,10 @@
 
           <template id="tplStats">
             <div class="stats-wrap">
-              <h5 class="stats-title">Statistics</h5>
+              <h4 class="fw-bold m-0 d-flex align-items-center gap-2">
+                Statistics
+                <span id="statsLockIcon" class="text-muted small d-none">🔒</span>
+              </h4>
             </div>
           </template>
         </div>
@@ -491,71 +514,156 @@
   </div>
 
   <div class="modal fade" id="premiumModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content rounded-4">
-      <div class="modal-header border-0 pb-0">
-        <div>
-          <div class="fw-bold fs-4">Buy Premium</div>
-          <div class="text-muted">Unlock advanced statistics and calendar heatmap</div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content premium-modal rounded-4">
 
-      <div class="modal-body pt-3">
-        <div class="table-responsive">
-          <table class="table align-middle">
-            <thead>
-              <tr>
-                <th>Feature</th>
-                <th class="text-center">Free</th>
-                <th class="text-center">Premium</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Habits list + reminders</td>
-                <td class="text-center">✅</td>
-                <td class="text-center">✅</td>
-              </tr>
-              <tr>
-                <td>Basic weekly stats</td>
-                <td class="text-center">✅</td>
-                <td class="text-center">✅</td>
-              </tr>
-              <tr>
-                <td>Calendar heatmap (year view)</td>
-                <td class="text-center">🔒</td>
-                <td class="text-center">✅</td>
-              </tr>
-              <tr>
-                <td>Advanced ranges (daily/weekly/monthly)</td>
-                <td class="text-center">🔒</td>
-                <td class="text-center">✅</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="modal-header border-0">
+          <h4 class="fw-bold m-0">Upgrade your plan 🚀</h4>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
 
-        <div class="d-flex gap-2 justify-content-end mt-2">
-          <button type="button" class="btn btn-muted rounded-pill px-3" data-bs-dismiss="modal">
-            Continue with current plan
-          </button>
-          <button type="button" class="btn btn-dark rounded-pill px-3" id="buyPremiumBtn">
-            Buy Premium
-          </button>
-        </div>
+        <div class="modal-body">
 
-        <div class="text-muted small mt-2">
-          * Payment flow will be added later (for now button can just show “Coming soon”).
+          <div class="row g-4 justify-content-center">
+            <div class="col-md-4">
+              <div class="premium-card">
+                <div class="premium-title">Free</div>
+                <div class="premium-price">$0<span>/month</span></div>
+
+                <ul class="premium-features">
+                  <li>✔ Basic habits</li>
+                  <li>✔ Weekly stats</li>
+                  <li>✔ Limited themes</li>
+                  <li>❌ Full heatmap</li>
+                  <li>❌ Advanced analytics</li>
+                  <li>❌ Premium themes</li>
+                </ul>
+
+                <div class="premium-footer muted">
+                  Continue using free plan
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="premium-card premium-card-highlight">
+                <div class="premium-badge">Most Popular</div>
+
+                <div class="premium-title">Premium</div>
+                <div class="premium-price">$4.99<span>/month</span></div>
+
+                <ul class="premium-features">
+                  <li>✔ Everything in Free</li>
+                  <li>✔ Full year heatmap</li>
+                  <li>✔ Advanced analytics</li>
+                  <li>✔ Unlimited history</li>
+                  <li>✔ Premium themes</li>
+                  <li>✔ Future exclusive features</li>
+                </ul>
+
+                <button id="upgradeBtn"
+                        class="btn btn-primary w-100 rounded-pill mt-3">
+                  Upgrade Now 💎
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <div class="modal fade" id="addCardModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content billing-modal rounded-4 overflow-hidden">
+
+        <div class="billing-head px-4 py-3 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <div class="brand-dot">💳</div>
+            <div>
+              <div class="billing-title">Add a new card</div>
+              <div class="billing-sub">Secure checkout (demo)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-body p-0">
+          <div class="row g-0">
+            <div class="col-md-7 p-4">
+              <div class="mb-3">
+                <label class="form-label small text-muted">Card Number</label>
+                <div class="input-with-icon">
+                  <input id="cardNumber" class="form-control form-control-lg" placeholder="1234 5678 9012 3456" autocomplete="off">
+                  <span class="right-icon">✅</span>
+                </div>
+                <div class="form-text">Enter 16-digit card number</div>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-6">
+                  <label class="form-label small text-muted">Expiry Date</label>
+                  <div class="d-flex gap-2">
+                    <input id="cardExpMM" class="form-control" placeholder="MM" maxlength="2" autocomplete="off">
+                    <input id="cardExpYY" class="form-control" placeholder="YY" maxlength="2" autocomplete="off">
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <label class="form-label small text-muted">CVC</label>
+                  <div class="input-with-icon">
+                    <input id="cardCvc" class="form-control" placeholder="123" maxlength="4" autocomplete="off">
+                    <span class="right-icon">⌨️</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-3">
+                <label class="form-label small text-muted">Name on Card</label>
+                <input id="cardName" class="form-control" placeholder="Your Name" autocomplete="off">
+              </div>
+
+              <div class="mt-4 d-grid">
+                <button id="saveCardBtn" class="btn btn-primary btn-lg rounded-3">
+                  Save Card
+                </button>
+              </div>
+
+              <div class="mt-2 small text-muted">
+                * Demo billing: we store only <b>last4</b> on backend.
+              </div>
+            </div>
+
+            <div class="col-md-5 billing-side p-4">
+              <div class="card-preview">
+                <div class="card-preview-top">
+                  <div class="chip"></div>
+                  <div class="wifi">📶</div>
+                </div>
+
+                <div class="card-preview-mid">
+                  <div class="card-holder" id="previewName">YOUR NAME</div>
+                  <div class="card-last4">•••• <span id="previewLast4">0000</span></div>
+                </div>
+
+                <div class="card-preview-bot">
+                  <div class="exp">
+                    <div class="exp-label">EXP</div>
+                    <div class="exp-val"><span id="previewMM">MM</span>/<span id="previewYY">YY</span></div>
+                  </div>
+                  <div class="scheme">●●●</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <script src="/js/api.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/js/dashboard.js"></script>
 </body>
 </html>

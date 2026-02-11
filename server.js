@@ -20,6 +20,7 @@ const habitRoutes = require("./src/routes/habitRoutes");
 const reminderRoutes = require("./src/routes/reminderRoutes");
 const statsRoutes = require("./src/routes/statsRoutes");
 const tagRoutes = require("./src/routes/tagRoutes");
+const billingRoutes = require("./src/routes/billingRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -27,6 +28,7 @@ app.use("/api/habits", habitRoutes);
 app.use("/api/reminders", reminderRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/tags", tagRoutes);
+app.use("/api/billing", billingRoutes);
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.static(path.join(__dirname, "views")));

@@ -33,3 +33,37 @@ function escapeHtml(s) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
 }
+
+window.api = {
+  async request(path, options = {}) {
+    const token = localStorage.getItem("token");
+    const headers = {
+      ...(options.headers || {}),
+      "Content-Type": "application/json",
+    };
+    if (token) headers.Authorization = "Bearer " + token;
+
+    const res = await fetch(path, { ...options, headers });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.message || "Request failed");
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+    return data;
+  },
+
+  get(path) {
+    return this.request(path, { method: "GET" });
+  },
+  post(path, body) {
+    return this.request(path, { method: "POST", body: JSON.stringify(body) });
+  },
+  patch(path, body) {
+    return this.request(path, { method: "PATCH", body: JSON.stringify(body) });
+  },
+  del(path) {
+    return this.request(path, { method: "DELETE" });
+  },
+};

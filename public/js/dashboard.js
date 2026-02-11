@@ -30,6 +30,23 @@ document.addEventListener("DOMContentLoaded", () => {
     container?.classList.toggle("d-none", e.target.value !== "custom");
   });
 
+  document.getElementById("cancelPremiumBtn")?.addEventListener("click", async () => {
+    if (!confirm("Are you sure you want to cancel Premium?")) return;
+
+    try {
+      const res = await apiRequest("/api/users/downgrade", {
+        method: "POST"
+      });
+
+      alert("You are now on Free plan");
+      CURRENT_USER = res.user;
+
+      renderProfile(CURRENT_USER);
+
+    } catch (e) {
+      alert("Error: " + e.message);
+    }
+  });
 
   setupLogout();
   setupProfileSave();
@@ -317,6 +334,81 @@ async function loadAndRenderKpis() {
     hideKpis();
     console.warn("KPI load failed:", e.message);
   }
+}
+
+function renderProfile(user) {
+  document.getElementById("user-name").textContent = user.username || "—";
+  document.getElementById("user-email").textContent = user.email || "";
+  document.getElementById("user-timezone").textContent = `Timezone: ${user.timezone || "UTC"}`;
+
+  renderAvatar(user);
+  renderGamificationUI();
+  renderBilling(user); 
+
+  const plan = String(user.plan || "free").toLowerCase();
+  const pill = document.getElementById("planPill");
+  const sub = document.getElementById("planSubtext");
+  const cancelBtn = document.getElementById("cancelPremiumBtn");
+
+  if (pill) {
+    const isPrem = plan === "premium";
+    pill.textContent = isPrem ? "Premium" : "Free";
+    pill.classList.toggle("bg-primary", isPrem);
+    pill.classList.toggle("text-white", isPrem);
+    pill.classList.toggle("bg-light", !isPrem);
+    pill.classList.toggle("text-dark", !isPrem);
+  }
+
+  if (sub) {
+    sub.textContent = plan === "premium"
+      ? "Premium plan is active"
+      : "Free plan (limited features)";
+  }
+
+  if (cancelBtn) {
+    cancelBtn.classList.toggle("d-none", plan !== "premium");
+  }
+
+  if (cancelBtn) {
+  if (user.plan === "premium") {
+          cancelBtn.classList.remove("d-none");
+  } else {
+      cancelBtn.classList.add("d-none");
+  }
+  }
+
+}
+
+function renderBilling(user) {
+  const container = document.getElementById("billingSection");
+  if (!container) return;
+
+  const cards = user.billing?.cards || [];
+
+  if (!cards.length) {
+    container.innerHTML = `
+      <button class="btn btn-outline-primary rounded-pill"
+              data-bs-toggle="modal"
+              data-bs-target="#addCardModal">
+        Add new card
+      </button>
+    `;
+    return;
+  }
+
+  container.innerHTML =
+    cards.map(c => `
+      <div class="billing-card-line mb-2">
+        💳 **** **** **** ${c.last4}
+      </div>
+    `).join("") +
+    `
+      <button class="btn btn-sm btn-outline-secondary rounded-pill mt-2"
+              data-bs-toggle="modal"
+              data-bs-target="#addCardModal">
+        Add new card
+      </button>
+    `;
 }
 
 function renderKpisFromOverview(overview) {
@@ -797,6 +889,11 @@ async function renderCalendarView() {
 async function renderStatsView() {
   const box = document.getElementById("habits-container");
   box.innerHTML = `<p class="text-center text-muted mt-4">Loading stats...</p>`;
+  const isPremium = CURRENT_USER?.plan === "premium";
+  const lockIcon = document.getElementById("statsLockIcon");
+  if (lockIcon) {
+    lockIcon.classList.toggle("d-none", isPremium);
+  }
 
   let resp;
   try {
@@ -890,6 +987,10 @@ async function renderStatsView() {
   select?.addEventListener("change", () => renderRange(select.value));
 
   renderRange("daily");
+
+  if (!isPremiumUser()) {
+    lockPremiumSection("heatmapWrap", openPremiumModal);
+  }
 
   function aggregateByWeek(arr) {
     function getISOWeekKey(dateStr) {
@@ -1113,6 +1214,46 @@ function renderHeatmapYear(year, byDay) {
     </div>`;
 }
 
+function lockPremiumSection(wrapperId, onClick) {
+  const wrap = document.getElementById(wrapperId);
+  if (!wrap) return;
+  if (wrap.closest(".premium-locked")) return;
+
+  const parent = wrap.parentElement;
+  if (!parent) return;
+
+  const locked = document.createElement("div");
+  locked.className = "premium-locked";
+
+  const blur = document.createElement("div");
+  blur.className = "premium-blur";
+  blur.appendChild(wrap);
+
+  const overlay = document.createElement("div");
+  overlay.className = "premium-overlay";
+  overlay.innerHTML = `
+    <div>
+      <div class="premium-badge">PREMIUM</div>
+      <p class="premium-title">Calendar Heatmap is locked</p>
+      <p class="premium-sub">Click to compare plans and unlock</p>
+    </div>
+  `;
+
+  overlay.addEventListener("click", onClick);
+
+  locked.appendChild(blur);
+  locked.appendChild(overlay);
+
+  parent.appendChild(locked);
+}
+
+function openPremiumModal() {
+  const el = document.getElementById("premiumModal");
+  if (!el) return;
+  const modal = bootstrap.Modal.getOrCreateInstance(el);
+  modal.show();
+}
+
 function setupCreateHabit() {
   document.getElementById("createHabitForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -1244,11 +1385,16 @@ function setupProfileSave() {
 }
 
 function renderProfile(user) {
+  const badge = document.getElementById("premiumBadge");
+  if (badge) {
+    badge.classList.toggle("d-none", user.plan !== "premium");
+  }
   document.getElementById("user-name").textContent = user.username || "—";
   document.getElementById("user-email").textContent = user.email || "";
   document.getElementById("user-timezone").textContent = `Timezone: ${user.timezone || "UTC"}`;
   renderAvatar(user);
   renderGamificationUI();
+  renderBilling(user);
 }
 
 function renderAvatar(user) {
@@ -1449,11 +1595,20 @@ function setupShop() {
     }
 
     if (type === "theme") {
+      const isPremium = CURRENT_USER?.plan === "premium";
+
+      if (!isPremium && cost > 0) {
+        const modal = new bootstrap.Modal(document.getElementById("premiumModal"));
+        modal.show();
+        return;
+      }
+
       g.coins = Math.max(0, (g.coins || 0) - cost);
       g.purchases = g.purchases || {};
       g.purchases[`theme:${value}`] = true;
       saveGame(g);
       setThemeColor(value);
+
       if (ok) ok.classList.remove("d-none");
       setTimeout(() => ok?.classList.add("d-none"), 1200);
       return;
@@ -1472,5 +1627,125 @@ document.addEventListener("DOMContentLoaded", () => {
 
   modal.addEventListener("shown.bs.modal", () => {
     renderTagsInHabitForm();
+  });
+});
+
+document.addEventListener("click", async (e) => {
+  if (e.target.id === "upgradeBtn") {
+    try {
+      await apiRequest("/api/users/upgrade", { method: "POST" });
+
+      alert("Welcome to Premium 🎉");
+      location.reload();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+});
+
+function onlyDigits(s) {
+  return (s || "").replace(/\D/g, "");
+}
+
+function formatCardNumber(v) {
+  const d = onlyDigits(v).slice(0, 16);
+  return d.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+}
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function updateCardPreview() {
+  const num = onlyDigits(document.getElementById("cardNumber")?.value);
+  const last4 = (num || "").slice(-4) || "0000";
+  const name = (document.getElementById("cardName")?.value || "YOUR NAME").toUpperCase();
+
+  const mm = onlyDigits(document.getElementById("cardExpMM")?.value || "").slice(0, 2) || "MM";
+  const yy = onlyDigits(document.getElementById("cardExpYY")?.value || "").slice(0, 2) || "YY";
+
+  const elLast4 = document.getElementById("previewLast4");
+  const elName = document.getElementById("previewName");
+  const elMM = document.getElementById("previewMM");
+  const elYY = document.getElementById("previewYY");
+
+  if (elLast4) elLast4.textContent = last4;
+  if (elName) elName.textContent = name;
+  if (elMM) elMM.textContent = mm;
+  if (elYY) elYY.textContent = yy;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const n = document.getElementById("cardNumber");
+  const mm = document.getElementById("cardExpMM");
+  const yy = document.getElementById("cardExpYY");
+  const cvc = document.getElementById("cardCvc");
+  const name = document.getElementById("cardName");
+  const save = document.getElementById("saveCardBtn");
+
+  if (!save) return;
+
+  n?.addEventListener("input", () => {
+    n.value = formatCardNumber(n.value);
+    updateCardPreview();
+  });
+
+  [mm, yy, cvc].forEach((el) => {
+    el?.addEventListener("input", () => {
+      el.value = onlyDigits(el.value).slice(0, el === cvc ? 4 : 2);
+      updateCardPreview();
+    });
+  });
+
+  name?.addEventListener("input", updateCardPreview);
+
+  updateCardPreview();
+
+  save.addEventListener("click", async (e) => {
+    e.preventDefault();
+
+    try {
+      if (!window.api || typeof window.api.post !== "function") {
+        alert("API helper not loaded. Check /js/api.js is included before dashboard.js");
+        return;
+      }
+
+      const number = onlyDigits(n?.value).slice(0, 16);
+      const expMonthRaw = onlyDigits(mm?.value).slice(0, 2);
+      const expYearRaw = onlyDigits(yy?.value).slice(0, 2);
+
+      if (number.length !== 16) return alert("Enter 16-digit card number");
+      if (expMonthRaw.length !== 2 || expYearRaw.length !== 2) return alert("Invalid expiry date");
+
+      const expMonthNum = parseInt(expMonthRaw, 10);
+      if (Number.isNaN(expMonthNum) || expMonthNum < 1 || expMonthNum > 12) {
+        return alert("Invalid expiry month");
+      }
+
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+
+      const expYearNum = 2000 + parseInt(expYearRaw, 10); // YY -> 20YY
+      if (expYearNum < currentYear) return alert("Invalid expiry year");
+      if (expYearNum === currentYear && expMonthNum < currentMonth) return alert("Card is expired");
+
+      const payload = {
+        number,
+        expMonth: pad2(expMonthNum),
+        expYear: String(expYearNum),
+      };
+
+      await window.api.post("/api/billing/cards", payload);
+
+      const mEl = document.getElementById("addCardModal");
+      if (mEl) bootstrap.Modal.getOrCreateInstance(mEl).hide();
+
+      alert("Card saved ✅");
+      location.reload();
+    } catch (err) {
+      console.error("Save card error:", err);
+      alert(`Save failed: ${err?.message || "Check console"}`);
+    }
   });
 });

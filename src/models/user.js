@@ -8,7 +8,9 @@ const userSchema = new mongoose.Schema({
     plan: { type: String, enum: ["free", "premium"], default: "free" },
     timezone: { type: String, default: 'UTC' },
     avatarUrl: { type: String, default: '' },
-    role: { type: String, default: 'user' }
+    role: { type: String, default: 'user' },
+    game: { xp: { type: Number, default: 0 }, coins: { type: Number, default: 0 }, badges: [{ type: String }], multiplier: { type: Number, default: 1 }},
+    billing: { cards: [{ brand: String, last4: String, expMonth: Number, expYear: Number, createdAt: { type: Date, default: Date.now } }] }
 }, { timestamps: true });
 
 userSchema.pre('save', async function() {

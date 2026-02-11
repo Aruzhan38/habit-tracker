@@ -247,8 +247,6 @@ exports.unarchiveHabit = async (req, res) => {
   res.json({ habit });
 };
 
-
-
 exports.addCheckIn = async (req, res) => {
   try {
     const { habitId } = req.params;
@@ -407,5 +405,27 @@ exports.toggleCheckInByDate = async (req, res) => {
     res.json({ message: "Toggled successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+exports.requirePremium = (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
+    if (req.user.plan !== "premium") {
+      return res.status(403).json({
+        code: "PREMIUM_REQUIRED",
+        message: "This feature is available only for Premium users",
+        upgradeRequired: true,
+      });
+    }
+
+    next();
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
