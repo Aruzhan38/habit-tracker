@@ -427,7 +427,6 @@
     </div>
   </div>
 
-  <!-- Shop -->
   <div class="modal fade" id="shopModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content rounded-4">
@@ -490,6 +489,69 @@
       </div>
     </div>
   </div>
+
+  <div class="modal fade" id="premiumModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <div class="fw-bold fs-4">Buy Premium</div>
+          <div class="text-muted">Unlock advanced statistics and calendar heatmap</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body pt-3">
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th class="text-center">Free</th>
+                <th class="text-center">Premium</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Habits list + reminders</td>
+                <td class="text-center">✅</td>
+                <td class="text-center">✅</td>
+              </tr>
+              <tr>
+                <td>Basic weekly stats</td>
+                <td class="text-center">✅</td>
+                <td class="text-center">✅</td>
+              </tr>
+              <tr>
+                <td>Calendar heatmap (year view)</td>
+                <td class="text-center">🔒</td>
+                <td class="text-center">✅</td>
+              </tr>
+              <tr>
+                <td>Advanced ranges (daily/weekly/monthly)</td>
+                <td class="text-center">🔒</td>
+                <td class="text-center">✅</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end mt-2">
+          <button type="button" class="btn btn-muted rounded-pill px-3" data-bs-dismiss="modal">
+            Continue with current plan
+          </button>
+          <button type="button" class="btn btn-dark rounded-pill px-3" id="buyPremiumBtn">
+            Buy Premium
+          </button>
+        </div>
+
+        <div class="text-muted small mt-2">
+          * Payment flow will be added later (for now button can just show “Coming soon”).
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/js/api.js"></script>

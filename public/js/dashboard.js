@@ -48,6 +48,8 @@ async function init() {
     const user = meResp.user || meResp;
     CURRENT_USER = user;
     CAL_ANCHOR = isoToday();
+    const isPremium = !!(user.isPremium || user.plan === "premium" || user.role === "premium");
+    CURRENT_USER.isPremium = isPremium;
 
     renderProfile(user);
 
@@ -67,6 +69,10 @@ async function init() {
 
   await loadTags();
   await refreshHabits();
+}
+
+function isPremiumUser() {
+  return !!(CURRENT_USER?.isPremium || CURRENT_USER?.plan === "premium" || CURRENT_USER?.role === "premium");
 }
 
 function isoToday() {

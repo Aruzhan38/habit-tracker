@@ -503,3 +503,56 @@ body {
   align-items:center;
   justify-content:flex-end;
 }
+
+.premium-locked {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.premium-locked .premium-blur {
+  filter: blur(8px);
+  pointer-events: none; 
+  user-select: none;
+}
+
+.premium-locked .premium-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  text-align: center;
+  background: rgba(255,255,255,0.50);
+  backdrop-filter: blur(2px);
+  cursor: pointer;
+}
+
+.premium-overlay .premium-badge {
+  background: #111827;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: inline-block;
+}
+
+.premium-overlay .premium-title {
+  font-weight: 800;
+  font-size: 18px;
+  margin: 0 0 6px;
+}
+
+.premium-overlay .premium-sub {
+  color: #374151;
+  margin: 0;
+  font-size: 14px;
+}
+
+.btn-muted {
+  background: #e5e7eb !important;
+  border: 1px solid #d1d5db !important;
+  color: #4b5563 !important;
+}
