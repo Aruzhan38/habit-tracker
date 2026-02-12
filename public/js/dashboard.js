@@ -1494,7 +1494,7 @@ async function uploadAvatar(file) {
 
 function setupLogout() {
   document.getElementById("logoutBtn")?.addEventListener("click", () => {
-    localStorage.clear();
+    localStorage.removeItem("token");
     window.location.href = "/";
   });
 }
