@@ -74,7 +74,7 @@ const replaceReminders = async (req, res, next) => {
 
     const normalized = list.map(normReminder).filter(Boolean);
 
-    habit.reminders = normalized; // overwrite
+    habit.reminders = normalized;
     await habit.save();
 
     res.json({ reminders: habit.reminders });

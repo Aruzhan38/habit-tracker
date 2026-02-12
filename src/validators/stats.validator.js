@@ -11,7 +11,7 @@ function validateStatsRange(req, res, next) {
     return res.status(400).json({ message: "from must be <= to" });
   }
 
-  req.statsRange = { from, to }; // attach parsed dates
+  req.statsRange = { from, to };
   return next();
 }
 
