@@ -125,6 +125,81 @@ Response includes:
 	•	Monthly – aggregated from daily data
 	•	Year heatmap – full calendar year (Jan 1 – Dec 31)
 
+🎮 Gamification System
+
+1. XP (Experience Points)
+
+Users earn XP by completing habits.
+
+XP Rules (example logic)
+	•	+10 XP per completed habit check-in
+	•	Bonus XP for streak milestones (optional extension)
+	•	XP accumulates permanently
+
+XP is displayed in the profile card:
+	•	Progress bar
+	•	Current XP value
+	•	Level badge
+
+3. Coins
+
+Coins are earned as a secondary reward system.
+
+Example Coin Logic
+	•	+1 coin per completed habit
+	•	Bonus coins for streaks
+	•	Coins stored per user
+
+Coins are used in the Shop.
+
+🛍️ Shop System
+
+Users can open the Shop modal.
+
+Features:
+	•	Shows current coin balance
+	•	Displays available items
+	•	Some items are locked behind Premium
+
+Example items:
+	•	Theme unlocks
+	•	Special badge styles
+	•	UI accent colors
+	•	Animated profile effects
+
+💎 Premium Subscription
+
+We introduced a Premium plan with extended features.
+
+Free Plan
+	•	Basic habits
+	•	Weekly statistics
+	•	Limited themes
+	•	❌ Full year heatmap
+	•	❌ Advanced analytics
+	•	❌ Premium themes
+
+Premium Plan ($4.99/month)
+
+Includes:
+	•	Everything in Free
+	•	Full year heatmap
+	•	Advanced analytics
+	•	Unlimited history
+	•	Premium themes
+	•	Future exclusive features
+
+💳 Demo Billing System
+
+Premium upgrade flow includes:
+	1.	Plan comparison modal
+	2.	Secure card form (demo)
+	3.	Card number validation
+	4.	Expiry & CVC fields
+	5.	Backend stores only last 4 digits (demo purpose)
+
+This is a demo billing implementation for learning purposes.
+
 
 🚀 Future Improvements
 	•	Mobile app version
