@@ -14,6 +14,19 @@ A full-stack Habit Tracker web application that helps users build habits, track 
 - User profile with avatar upload
 - Responsive UI
 
+## Screenshots
+
+![Main page](assets/mainpage.png)
+![Login/Register](assets/login.png)
+![Dashboard](assets/dashboard.png)
+![Habits](assets/habits.png)
+![Notify](assets/notify.png)
+![Game](assets/shop.png)
+![Premium](assets/premium.png)
+![Card](assets/payment.png)
+![Stats](assets/stats.png)
+
+
 
 🛠 Tech Stack
 Frontend
